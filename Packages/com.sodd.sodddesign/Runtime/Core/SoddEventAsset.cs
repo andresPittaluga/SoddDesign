@@ -134,6 +134,33 @@ namespace Sodd.Design
         }
     }
 
+    /// <summary>
+    /// GUID con el mismo layout serializado que FMOD.GUID (Data1..Data4). Permite migrar campos
+    /// <c>FMODUnity.EventReference</c> a <see cref="SoddEventReference"/> sin perder los valores de prefabs/escenas.
+    /// </summary>
+    [Serializable]
+    public struct SoddLegacyGuid
+    {
+        public int Data1, Data2, Data3, Data4;
+        public bool IsNull => Data1 == 0 && Data2 == 0 && Data3 == 0 && Data4 == 0;
+
+        public override string ToString()
+        {
+            if (IsNull) return null;
+            var b = new byte[16];
+            BitConverter.GetBytes(Data1).CopyTo(b, 0); BitConverter.GetBytes(Data2).CopyTo(b, 4);
+            BitConverter.GetBytes(Data3).CopyTo(b, 8); BitConverter.GetBytes(Data4).CopyTo(b, 12);
+            return new System.Guid(b).ToString();
+        }
+
+        public static SoddLegacyGuid From(string guid)
+        {
+            if (!System.Guid.TryParse(guid, out var g)) return default;
+            var b = g.ToByteArray();
+            return new SoddLegacyGuid { Data1 = BitConverter.ToInt32(b, 0), Data2 = BitConverter.ToInt32(b, 4), Data3 = BitConverter.ToInt32(b, 8), Data4 = BitConverter.ToInt32(b, 12) };
+        }
+    }
+
     /// <summary>Referencia serializable a un evento (GUID del evento + path legible + asset directo).</summary>
     [Serializable]
     public struct SoddEventReference
@@ -141,23 +168,31 @@ namespace Sodd.Design
         public string guid;
         public string path;
         public SoddEventAsset asset;
+        /// <summary>Compatibilidad FMOD: valores serializados de un antiguo FMODUnity.EventReference (no editar).</summary>
+        [HideInInspector] public SoddLegacyGuid Guid;
+        /// <summary>Compatibilidad FMOD: "event:/..." de un antiguo FMODUnity.EventReference (no editar).</summary>
+        [HideInInspector] public string Path;
 
         public SoddEventReference(SoddEventAsset a)
         {
             asset = a; guid = a != null ? a.Id : null; path = a != null ? a.Path : null;
+            Guid = default; Path = null;
         }
 
         public static SoddEventReference FromPath(string p) => new SoddEventReference { path = p };
 
-        public bool IsNull => asset == null && string.IsNullOrEmpty(guid) && string.IsNullOrEmpty(path);
+        public bool IsNull => asset == null && string.IsNullOrEmpty(guid) && string.IsNullOrEmpty(path) && Guid.IsNull && string.IsNullOrEmpty(Path);
 
         public SoddEventAsset Resolve()
         {
             if (asset != null) return asset;
-            return SoddEvents.Find(!string.IsNullOrEmpty(guid) ? guid : path) ?? SoddEvents.Find(path);
+            var a = SoddEvents.Find(!string.IsNullOrEmpty(guid) ? guid : path) ?? SoddEvents.Find(path);
+            if (a != null) return a;
+            if (!Guid.IsNull) a = SoddEvents.Find(Guid.ToString());
+            return a ?? SoddEvents.Find(Path);
         }
 
-        public override string ToString() => !string.IsNullOrEmpty(path) ? path : guid ?? "(none)";
+        public override string ToString() => !string.IsNullOrEmpty(path) ? path : !string.IsNullOrEmpty(guid) ? guid : !string.IsNullOrEmpty(Path) ? Path : Guid.ToString() ?? "(none)";
     }
 
     /// <summary>Búsqueda de eventos: registro + eventos registrados manualmente (tests, bancos, Addressables).</summary>
@@ -199,9 +234,19 @@ namespace Sodd.Design
 
         public static void ClearRegistered() { s_extra.Clear(); s_extraHash.Clear(); }
 
+        /// <summary>Acepta id, "{id}", path, o "event:/Carpeta/Nombre con espacios" (estilo FMOD).</summary>
+        public static string Normalize(string idOrPath)
+        {
+            if (string.IsNullOrEmpty(idOrPath)) return idOrPath;
+            if (idOrPath.StartsWith("event:/", StringComparison.OrdinalIgnoreCase)) idOrPath = idOrPath.Substring(7).Replace(' ', '_');
+            else if (idOrPath.Length == 38 && idOrPath[0] == '{') idOrPath = idOrPath.Substring(1, 36);
+            return idOrPath;
+        }
+
         public static SoddEventAsset Find(string idOrPath)
         {
             if (string.IsNullOrEmpty(idOrPath)) return null;
+            idOrPath = Normalize(idOrPath);
             if (s_extra.TryGetValue(idOrPath, out var e) && e != null) return e;
             var r = Registry != null ? Registry.Find(idOrPath) : null;
             if (r == null && EditorResolver != null) r = EditorResolver(idOrPath);

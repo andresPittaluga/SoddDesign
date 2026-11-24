@@ -70,6 +70,19 @@ namespace Sodd.Design
             if (t != null) s.position = t.position;
         }
 
+        /// <summary>Multiplicador de pitch (ratio, 1 = normal), como EventInstance.setPitch de FMOD.</summary>
+        public float Pitch
+        {
+            get => State?.pitchScale ?? 1f;
+            set { var s = State; if (s != null) s.pitchScale = Mathf.Clamp(value, 0.05f, 4f); }
+        }
+
+        /// <summary>Duración del timeline del evento (s), como EventDescription.getLength.</summary>
+        public float Length => State?.asset?.length ?? 0f;
+
+        /// <summary>Arranca desde una posición del timeline (s), como setTimelinePosition + start.</summary>
+        public void StartFrom(float seconds) { var s = State; if (s != null) _engine.StartFrom(s, seconds); }
+
         public void SetPaused(bool paused) { var s = State; if (s != null) s.userPaused = paused; }
 
         /// <summary>Multiplicador de volumen lineal extra (0..1+), útil para mezclas desde código.</summary>

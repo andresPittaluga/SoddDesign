@@ -30,6 +30,12 @@ namespace Sodd.Design.Editor
             {
                 var a = assetP.objectReferenceValue as SoddEventAsset;
                 string p = a != null ? a.Path : pathP.stringValue;
+                if (string.IsNullOrEmpty(p))
+                {
+                    var legacy = property.FindPropertyRelative("Path")?.stringValue;
+                    var resolved = SoddEvents.Find(legacy);
+                    if (!string.IsNullOrEmpty(legacy)) p = resolved != null ? resolved.Path + "  (FMOD)" : "⚠ " + legacy + " (FMOD, sin convertir)";
+                }
                 bool missing = a == null && !string.IsNullOrEmpty(guidP.stringValue) && SoddEvents.Find(guidP.stringValue) == null;
                 button.text = string.IsNullOrEmpty(p) ? "(ninguno) — click para buscar" : (missing ? "⚠ " : "♪ ") + p;
                 button.style.color = missing ? new Color(1f, 0.6f, 0.4f) : StyleKeyword.Null;

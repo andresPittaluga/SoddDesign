@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.2] - 2026-11-24
+- Compatibilidad FMOD: `SoddEventReference` lee los valores serializados de `FMODUnity.EventReference` (Guid Data1..4 + Path) al cambiar el tipo del campo; `SoddEvents.Find` acepta "event:/..." y "{guid}"; `SoddBus.Find` acepta "bus:/...".
+- `SoddEventInstance.Pitch` (ratio), `Length`, `StartFrom(segundos)`; `SoddBus.VolumeLinear`.
+
 ## [0.1.1] - 2026-11-24
 - Fix: en el primer import de un proyecto, los eventos que se importaban antes que sus AudioClips quedaban sin clips. Ahora se reimportan solos cuando llegan los audios.
 

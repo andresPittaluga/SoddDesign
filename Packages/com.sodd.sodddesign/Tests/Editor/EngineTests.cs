@@ -228,3 +228,46 @@ namespace Sodd.Design.Tests
         }
     }
 }
+
+namespace Sodd.Design.Tests
+{
+    public class FmodCompatTests
+    {
+        [NUnit.Framework.Test]
+        public void LegacyFmodGuidAndPathResolve()
+        {
+            const string id = "c7d97a7a-2fdf-4512-9faf-743c94bc8d1b";
+            var g = SoddLegacyGuid.From(id);
+            NUnit.Framework.Assert.AreEqual(id, g.ToString());
+            var a = TestUtil.MakeAsset(TestUtil.Event("x", "", TestUtil.Track(TestUtil.Region(0, 1))).Replace("\"id\": \"x\"", "\"id\": \"" + id + "\"").Replace("test/x", "UI/LevelUp/Get_Damage"));
+            SoddEvents.Register(a);
+            try
+            {
+                NUnit.Framework.Assert.AreSame(a, new SoddEventReference { Guid = g }.Resolve());
+                NUnit.Framework.Assert.AreSame(a, new SoddEventReference { Path = "event:/UI/LevelUp/Get Damage" }.Resolve());
+                NUnit.Framework.Assert.AreSame(a, SoddEvents.Find("{" + id + "}"));
+                NUnit.Framework.Assert.IsFalse(new SoddEventReference { Guid = g }.IsNull);
+            }
+            finally { SoddEvents.Unregister(a); }
+        }
+
+        [NUnit.Framework.Test]
+        public void PitchScaleStartFromAndBusPaths()
+        {
+            var e = TestUtil.Headless();
+            e.HeadlessClipLength = 10f;
+            var a = TestUtil.MakeAsset(TestUtil.Event("sf", "", TestUtil.Track(TestUtil.Region(0, 4))));
+            var inst = e.CreateInstance(a);
+            inst.Pitch = 2f;
+            e.Update(0, 0);
+            inst.StartFrom(3f);
+            TestUtil.Run(e, 0, 0.2);
+            NUnit.Framework.Assert.That(inst.TimelinePosition, NUnit.Framework.Is.InRange(3f, 3.3f));
+            NUnit.Framework.Assert.AreEqual(1, e.ActiveVoiceCount, "la región que ya empezó suena desde el offset");
+            NUnit.Framework.Assert.AreSame(e.Buses.Master, e.Buses.Find("bus:/"));
+            NUnit.Framework.Assert.AreSame(e.Buses.Find("SFX"), e.Buses.Find("bus:/SFX"));
+            e.Buses.Find("SFX").VolumeLinear = 0.5f;
+            NUnit.Framework.Assert.AreEqual(-6.02f, e.Buses.Find("SFX").Volume, 0.05f);
+        }
+    }
+}

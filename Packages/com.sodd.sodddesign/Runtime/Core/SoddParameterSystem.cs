@@ -109,6 +109,13 @@ namespace Sodd.Design
             set { _volumeDb = Mathf.Clamp(value, -80f, 24f); _fading = false; }
         }
 
+        /// <summary>Volumen lineal (0..1+), como Bus.setVolume de FMOD.</summary>
+        public float VolumeLinear
+        {
+            get => SoddModulation.DbToLinear(_volumeDb);
+            set => Volume = SoddModulation.LinearToDb(Mathf.Max(0f, value));
+        }
+
         public void FadeTo(float db, float seconds)
         {
             if (seconds <= 0f) { Volume = db; return; }
@@ -161,6 +168,7 @@ namespace Sodd.Design
         public SoddBus Find(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;
+            if (name.StartsWith("bus:/", StringComparison.OrdinalIgnoreCase)) name = name.Length == 5 ? "Master" : name.Substring(name.LastIndexOf('/') + 1);
             for (int i = 0; i < _buses.Count; i++) if (string.Equals(_buses[i].Name, name, StringComparison.OrdinalIgnoreCase)) return _buses[i];
             return null;
         }

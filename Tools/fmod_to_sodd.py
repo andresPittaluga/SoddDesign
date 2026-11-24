@@ -38,6 +38,93 @@ def F(o, n, d=0.0):
 
 def rnd(x, n=4): return round(float(x), n)
 
+def convert_mods(objs, owner, path, warn, where):
+    pitch, vol = [], []
+    for m in R(owner, 'modulators'):
+        mo = objs.get(m)
+        if mo is None: continue
+        prop, cls = P(mo, 'nameOfPropertyBeingModulated'), mo.get('class')
+        if cls == 'RandomizerModulator':
+            amt = F(mo, 'amount')
+            if prop == 'pitch':
+                st = amt * 0.24
+                pitch.append({'type': 'Random', 'min': rnd(-st / 2, 3), 'max': rnd(st / 2, 3), 'unit': 'Semitones'})
+            elif prop == 'volume':
+                vol.append({'type': 'Random', 'min': rnd(-amt, 2), 'max': 0, 'unit': 'dB'})
+            else: warn(f'{path}: randomizer de {prop} ({where}) no convertido')
+        elif cls == 'ADSRModulator' and prop == 'volume':
+            vol.append({'type': 'ADSR', 'attack': rnd(F(mo, 'attackTime') / 1000), 'decay': rnd(F(mo, 'decayTime') / 1000),
+                        'sustain': rnd(F(mo, 'sustainLevel', 1)), 'release': rnd(F(mo, 'releaseTime') / 1000)})
+        else: warn(f'{path}: modulador {cls} sobre {prop} ({where}) no convertido')
+    return pitch, vol
+
+import math as _m
+def st(r): return round(12 * _m.log2(max(r, 1e-4)), 2)
+
+def apply_automations(objs, ev, out, tracks, master, path, warn):
+    owners = {}
+    for o in objs.values():
+        if o.get('_file') == ev.get('_file'):
+            for a in R(o, 'automators'): owners[a] = o
+    # efecto → track (por la cadena de efectos del EventMixerGroup del track)
+    fx_track = {}
+    for ti, t in enumerate(tracks):
+        for ch in R(objs.get(t.get('_mg')), 'effectChain'):
+            for e in R(objs.get(ch), 'effects'): fx_track[e] = ti
+    master_fx = set(e for ch in R(master, 'effectChain') for e in R(objs.get(ch), 'effects')) if master is not None else set()
+    params = {}
+    def regions_of(mod):
+        return [r for t in tracks for r in t['regions'] if r.get('_mod') == mod]
+    for a, tgt in owners.items():
+        ao = objs.get(a); prop = P(ao, 'nameOfPropertyBeingAutomated'); cls = tgt.get('class')
+        for c in R(ao, 'automationCurves'):
+            co = objs.get(c); par = objs.get((R(co, 'parameter') or [None])[0])
+            pts = sorted((F(objs[q], 'position'), F(objs[q], 'value')) for q in R(co, 'automationPoints') if q in objs)
+            if not pts: continue
+            timeline = par is not None and par.get('class') == 'Timeline'
+            pname = None
+            if not timeline and par is not None:
+                gp = par.get('id') if par.get('class') == 'GameParameter' else (R(par, 'preset') or [None])[0]
+                pp = next((x for x in objs.values() if x.get('class') == 'ParameterPreset' and (R(x, 'parameter') or [None])[0] == gp), None)
+                pname = P(pp, 'name')
+                if pname: params[pname] = True
+            if timeline and len(pts) < 2: continue  # punto único = constante neutra
+            done = False
+            if cls == 'PitchShifterEffect' and prop == 'pitch':
+                tracks_hit = [tracks[fx_track[tgt.get('id')]]] if tgt.get('id') in fx_track else (tracks if tgt.get('id') in master_fx else [])
+                for t in tracks_hit:
+                    for r in t['regions']:
+                        if timeline:
+                            (t0, v0), (t1, v1) = pts[0], pts[-1]
+                            r['instrument']['pitch'] = {'base': st(v0), 'modulators': [{'type': 'Envelope', 'attack': rnd(max(0.001, t1 - t0)), 'hold': 600, 'release': 0, 'depth': rnd(st(v1) - st(v0), 2)}]}
+                        else:
+                            r['instrument']['pitch'] = {'base': 0, 'modulators': [{'type': 'ParameterCurve', 'parameter': pname, 'unit': 'Linear', 'curve': [[rnd(x), rnd(y)] for x, y in pts]}]}
+                done = bool(tracks_hit)
+            elif cls == 'EventMixerMaster' and prop in ('pitch', 'volume') and not timeline and pname:
+                cur = out.get(prop, 0)
+                if not isinstance(cur, dict): cur = {'base': cur, 'modulators': []}
+                cur['modulators'].append({'type': 'ParameterCurve', 'parameter': pname, 'curve': [[rnd(x), rnd(y)] for x, y in pts]})
+                out[prop] = cur; done = True
+            elif cls in ('SingleSound', 'MultiSound') and prop == 'volume' and timeline and pts[-1][1] <= -79 and len(pts) == 2:
+                for r in regions_of(tgt.get('id')):
+                    v = r['instrument'].get('volume', 0)
+                    if not isinstance(v, dict): v = {'base': v, 'modulators': []}
+                    rel0 = pts[0][0] - r['start']
+                    v['modulators'].append({'type': 'Envelope', 'attack': 0, 'hold': rnd(max(0, rel0)), 'release': rnd(pts[1][0] - pts[0][0])})
+                    r['instrument']['volume'] = v
+                done = True
+            elif cls == 'TremoloEffect' and not timeline and pname:
+                idx = {'frequency': 'rate', 'depth': 'depth'}.get(prop)
+                hit = [tracks[fx_track[tgt.get('id')]]] if tgt.get('id') in fx_track else tracks
+                for t in hit:
+                    fx = next((f for f in t.setdefault('effects', []) if f['type'] == 'Tremolo'), None)
+                    if fx is None: fx = {'type': 'Tremolo', 'params': {}}; t['effects'].append(fx)
+                    if idx: fx['params'][idx] = {'base': 0, 'modulators': [{'type': 'ParameterCurve', 'parameter': pname, 'curve': [[rnd(x), rnd(y)] for x, y in pts]}]}
+                done = idx is not None
+            if not done: warn(f'{path}: automatización de {cls}.{prop} sobre {"timeline" if timeline else pname} no convertida')
+    if params:
+        out['parameters'] = [{'name': n, 'min': 0, 'max': 1, 'default': 0, 'description': 'Parámetro de FMOD (lo setea el código).'} for n in params]
+
 def event_path(objs, ev):
     parts = [P(ev, 'name')]
     f = R(ev, 'folder')
@@ -63,23 +150,12 @@ def convert(objs, ev, fmod_root, unity_root, warn):
     if has_spatial:
         out['is3D'] = True
         out['spatial'] = {'minDistance': rnd(F(props, 'minimumDistance', 1)), 'maxDistance': rnd(F(props, 'maximumDistance', 20))}
-    top = path.split('/')[0].lower()
-    out['bus'] = 'Music' if top == 'music' else 'UI' if top in ('ui', 'menu', 'vending', 'planetselect', 'firmselect') else 'SFX'
+    mi = objs.get((R(ev, 'mixerInput') or [None])[0])
+    grp = objs.get((R(mi, 'output') or [None])[0])
+    out['bus'] = P(grp, 'name', 'Master') if grp is not None and grp.get('class') == 'MixerGroup' else 'Master'
     if master is not None:
         if P(master, 'volume') is not None: out['volume'] = rnd(F(master, 'volume'), 2)
-        mods_p, mods_v = [], []
-        for m in R(master, 'modulators'):
-            mo = objs.get(m)
-            if mo is None: continue
-            if mo.get('class') == 'RandomizerModulator':
-                prop, amt = P(mo, 'nameOfPropertyBeingModulated'), F(mo, 'amount')
-                if prop == 'pitch':
-                    st = amt * 0.24  # FMOD guarda % de 24 semitonos (aprox.); rango total → ±mitad
-                    mods_p.append({'type': 'Random', 'min': rnd(-st / 2, 3), 'max': rnd(st / 2, 3), 'unit': 'Semitones'})
-                elif prop == 'volume':
-                    mods_v.append({'type': 'Random', 'min': rnd(-amt, 2), 'max': 0, 'unit': 'dB'})
-                else: warn(f'{path}: randomizer de {prop} no convertido')
-            else: warn(f'{path}: modulador {mo.get("class")} del master no convertido')
+        mods_p, mods_v = convert_mods(objs, master, path, warn, 'master')
         if mods_p: out['pitch'] = {'base': 0, 'modulators': mods_p}
         if mods_v: out['volume'] = {'base': out.get('volume', 0), 'modulators': mods_v}
     # tracks
@@ -90,6 +166,7 @@ def convert(objs, ev, fmod_root, unity_root, warn):
         if rel is None: return None, 0
         src = os.path.join(fmod_root, 'Assets', rel)
         dst_rel = 'Assets/SoddDesign/Audio/FMOD/' + rel.replace('\\', '/')
+        if unity_root is None: return dst_rel, F(af, 'length')
         if os.path.exists(src):
             os.makedirs(os.path.dirname(os.path.join(unity_root, dst_rel)), exist_ok=True)
             if not os.path.exists(os.path.join(unity_root, dst_rel)): shutil.copy2(src, os.path.join(unity_root, dst_rel))
@@ -101,47 +178,61 @@ def convert(objs, ev, fmod_root, unity_root, warn):
         if c is None: return 0.0
         a, b = objs.get((R(c, 'startPoint') or [None])[0]), objs.get((R(c, 'endPoint') or [None])[0])
         return max(0.0, F(b, 'position') - F(a, 'position')) if a is not None and b is not None else 0.0
+    def inst_region(m, start_override=None):
+        mo = objs.get(m)
+        if mo is None: return None
+        cls = mo.get('class')
+        start = F(mo, 'start') if start_override is None else start_override
+        ins = {}
+        if cls == 'SingleSound':
+            clip, flen = clip_of((R(mo, 'audioFile') or [None])[0])
+            if clip is None: return None
+            ins = {'type': 'SingleClip', 'clip': clip}
+        elif cls == 'MultiSound':
+            clips, flen = [], 0
+            for s in R(mo, 'sounds'):
+                c, l = clip_of((R(objs.get(s), 'audioFile') or [None])[0])
+                if c: clips.append(c); flen = max(flen, l)
+            ins = {'type': 'Sequential' if P(mo, 'playlistMode') == '1' else 'RandomClip', 'clips': clips}
+            if ins['type'] == 'RandomClip': ins['avoidRepeat'] = True
+        else:
+            warn(f'{path}: instrumento {cls} no soportado'); return None
+        length = F(mo, 'length', flen or 1.0)
+        if P(mo, 'looping') == 'true': ins['loop'] = True
+        off = F(mo, 'timelockedOffset')
+        if off > 0: ins['startOffset'] = rnd(off)
+        if P(mo, 'volume') is not None: ins['volume'] = rnd(F(mo, 'volume'), 2)
+        if P(mo, 'pitch') is not None: ins['pitch'] = rnd(F(mo, 'pitch'), 2)
+        ip, iv = convert_mods(objs, mo, path, warn, 'instrumento')
+        if ip: ins['pitch'] = {'base': ins.get('pitch', 0), 'modulators': ip}
+        if iv: ins['volume'] = {'base': ins.get('volume', 0), 'modulators': iv}
+        reg = {'start': rnd(start), 'length': rnd(length), 'instrument': ins, '_mod': m}
+        fi, fo = fade(mo, 'fadeInCurve'), fade(mo, 'fadeOutCurve')
+        if fi > 0: reg['fadeIn'] = rnd(fi)
+        if fo > 0: reg['fadeOut'] = rnd(fo)
+        return reg
+
     tracks = []
     for ti, t in enumerate(R(ev, 'groupTracks')):
         to = objs.get(t)
         mg = objs.get((R(to, 'mixerGroup') or [None])[0])
-        tr = {'name': P(mg, 'name', f'Audio {ti + 1}'), 'type': 'Music' if out['bus'] == 'Music' else 'SFX'}
+        tr = {'name': P(mg, 'name', f'Audio {ti + 1}'), 'type': 'Music' if out['bus'] == 'Music' else 'SFX', '_mg': (R(to, 'mixerGroup') or [None])[0]}
         if mg is not None and P(mg, 'volume') is not None: tr['volume'] = rnd(F(mg, 'volume'), 2)
-        if R(to, 'automationTracks'): warn(f'{path} / {tr["name"]}: tiene automatizaciones (revisar a mano)')
-        regions = []
-        for m in R(to, 'modules'):
-            mo = objs.get(m)
-            if mo is None: continue
-            cls = mo.get('class')
-            start = F(mo, 'start')
-            ins = {}
-            if cls == 'SingleSound':
-                clip, flen = clip_of((R(mo, 'audioFile') or [None])[0])
-                if clip is None: continue
-                ins = {'type': 'SingleClip', 'clip': clip}
-            elif cls == 'MultiSound':
-                clips, flen = [], 0
-                for s in R(mo, 'sounds'):
-                    c, l = clip_of((R(objs.get(s), 'audioFile') or [None])[0])
-                    if c: clips.append(c); flen = max(flen, l)
-                ins = {'type': 'Sequential' if P(mo, 'playlistMode') == '1' else 'RandomClip', 'clips': clips}
-                if ins['type'] == 'RandomClip': ins['avoidRepeat'] = True
-            else:
-                warn(f'{path}: instrumento {cls} no soportado'); continue
-            length = F(mo, 'length', flen or 1.0)
-            if P(mo, 'looping') == 'true': ins['loop'] = True
-            off = F(mo, 'timelockedOffset')
-            if off > 0: ins['startOffset'] = rnd(off)
-            if P(mo, 'volume') is not None: ins['volume'] = rnd(F(mo, 'volume'), 2)
-            if P(mo, 'pitch') is not None: ins['pitch'] = rnd(F(mo, 'pitch'), 2)
-            if R(mo, 'modulators'): warn(f'{path}: moduladores del instrumento no convertidos')
-            reg = {'start': rnd(start), 'length': rnd(length), 'instrument': ins}
-            fi, fo = fade(mo, 'fadeInCurve'), fade(mo, 'fadeOutCurve')
-            if fi > 0: reg['fadeIn'] = rnd(fi)
-            if fo > 0: reg['fadeOut'] = rnd(fo)
-            regions.append(reg)
+        regions = [r for r in (inst_region(m) for m in R(to, 'modules')) if r]
         tr['regions'] = regions
         tracks.append(tr)
+    for sh in (o for o in objs.values() if o.get('class') == 'ActionSheet' and o.get('_file') == ev.get('_file')):
+        consecutive = P(sh, 'playbackMode') == '1'
+        t0 = 0.0
+        for k, m in enumerate(R(sh, 'modules')):
+            reg = inst_region(m, t0 if consecutive else 0.0)
+            if reg is None: continue
+            if consecutive: t0 += reg['length']
+            tracks.append({'name': f'Action {k + 1}', 'type': 'Music' if out['bus'] == 'Music' else 'SFX', 'regions': [reg]})
+    apply_automations(objs, ev, out, tracks, master, path, warn)
+    for t in tracks:
+        t.pop('_mg', None)
+        for r in t['regions']: r.pop('_mod', None)
     out['tracks'] = tracks
     tl = objs.get((R(ev, 'timeline') or [None])[0])
     loops, markers = [], []
@@ -155,7 +246,6 @@ def convert(objs, ev, fmod_root, unity_root, warn):
         else: warn(f'{path}: marker {mo.get("class")} no convertido')
     if loops: out['loopRegions'] = loops
     if markers: out['markers'] = markers
-    if R(ev, 'parameters'): warn(f'{path}: tiene parámetros FMOD (revisar a mano si se usan)')
     return sodd_path, out, list(copied)
 
 def main():
@@ -166,11 +256,14 @@ def main():
     if '--list' in sys.argv:
         print('\n'.join(sorted(events))); return
     warns = []
+    if '--all' in sys.argv: wanted = sorted(events)
+    dry = '--dry' in sys.argv
     for w in wanted:
         ev = events.get(w)
         if ev is None:
             print('NO EXISTE:', w); continue
-        sodd_path, data, clips = convert(objs, ev, fmod_root, unity_root, warns.append)
+        sodd_path, data, clips = convert(objs, ev, fmod_root, None if dry else unity_root, warns.append)
+        if dry: continue
         dst = os.path.join(unity_root, 'Assets', 'SoddDesign', 'Events', *sodd_path.split('/')) + '.sodd.json'
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         with open(dst, 'w', encoding='utf-8', newline='\n') as f:

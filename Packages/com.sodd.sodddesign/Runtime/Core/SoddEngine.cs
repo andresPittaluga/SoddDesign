@@ -64,6 +64,7 @@ namespace Sodd.Design
         public double pauseStartDsp;
         public int virtualVoices;
         public float volumeScale = 1f;
+        public float pitchScale = 1f;
         public Action<SoddEventInstance, string> onMarker;
         public Action<SoddEventInstance> onStopped;
         public Action<SoddEventInstance, string> onLoopExit;
@@ -73,7 +74,7 @@ namespace Sodd.Design
             released = false; state = SoddInstanceState.Created; asset = null; ev = null;
             attach = null; hasAttach = false; position = Vector3.zero;
             voiceCount = 0; mkCount = 0; segCount = 0; childCount = 0;
-            stopElapsed = -1f; elapsed = 0f; triggerCounter = 0; virtualVoices = 0; volumeScale = 1f;
+            stopElapsed = -1f; elapsed = 0f; triggerCounter = 0; virtualVoices = 0; volumeScale = 1f; pitchScale = 1f;
             paused = userPaused = false;
             onMarker = null; onStopped = null; onLoopExit = null;
             for (int i = 0; i < MaxLoops; i++) loopExited[i] = false;
@@ -198,7 +199,11 @@ namespace Sodd.Design
 
         internal void Start(SoddInstance s) => StartAt(s, Now + LookaheadSeconds * 0.5);
 
-        internal void StartAt(SoddInstance s, double dsp)
+        internal void StartFrom(SoddInstance s, float seconds) => StartAt(s, Now + LookaheadSeconds * 0.5, seconds);
+
+        internal void StartAt(SoddInstance s, double dsp) => StartAt(s, dsp, 0f);
+
+        internal void StartAt(SoddInstance s, double dsp, float fromTime)
         {
             if (s.state == SoddInstanceState.Playing || s.state == SoddInstanceState.Stopping) StopInternal(s, SoddStopMode.Immediate, false);
             var ev = s.ev;
@@ -210,12 +215,14 @@ namespace Sodd.Design
             s.startTime = _time;
             s.elapsed = 0f; s.stopElapsed = -1f;
             s.startDsp = dsp;
-            s.schedT = 0; s.schedDsp = dsp;
-            s.segCount = 0; AddSegment(s, dsp, 0);
+            fromTime = Mathf.Max(0f, fromTime);
+            s.schedT = fromTime; s.schedDsp = dsp;
+            s.segCount = 0; AddSegment(s, dsp, fromTime);
             s.mkCount = 0;
             for (int i = 0; i < SoddInstance.MaxLoops; i++) s.loopExited[i] = false;
             if (s.hasAttach && s.attach != null) s.position = s.attach.position;
             GlobalStarted?.Invoke(a, s.position);
+            if (fromTime > 0f) ScheduleSpanning(s, fromTime, dsp);
             Schedule(s);
         }
 
@@ -521,7 +528,7 @@ namespace Sodd.Design
 
             var ctx = Ctx(s, seed, s.elapsed);
             float semis = SoddModulation.Evaluate(ev.pitch, SoddPropKind.Semitones, ref ctx) + SoddModulation.Evaluate(ins.pitch, SoddPropKind.Semitones, ref ctx);
-            float ratio = Mathf.Clamp(SoddModulation.SemitonesToRatio(semis), 0.05f, 3f);
+            float ratio = Mathf.Clamp(SoddModulation.SemitonesToRatio(semis) * s.pitchScale, 0.05f, 4f);
             float clipLen = clip != null ? clip.length : HeadlessClipLength;
             float clipOffset = offset * ratio + Mathf.Max(0f, SoddModulation.Evaluate(ins.startOffset, SoddPropKind.Generic, ref ctx));
             if (ins.loop && clipLen > 0f) clipOffset %= clipLen;
@@ -703,7 +710,7 @@ namespace Sodd.Design
             if (src == null) return;
             src.volume = gain;
             float semis = SoddModulation.Evaluate(ev.pitch, SoddPropKind.Semitones, ref ctx) + SoddModulation.Evaluate(ins.pitch, SoddPropKind.Semitones, ref vctx);
-            src.pitch = Mathf.Clamp(SoddModulation.SemitonesToRatio(semis), 0.05f, 3f);
+            src.pitch = Mathf.Clamp(SoddModulation.SemitonesToRatio(semis) * s.pitchScale, 0.05f, 4f);
             src.panStereo = Mathf.Clamp(SoddModulation.Evaluate(track.pan, SoddPropKind.Generic, ref ctx), -1f, 1f);
             src.reverbZoneMix = Mathf.Clamp01(1f + SoddModulation.Evaluate(track.reverbSend, SoddPropKind.Generic, ref ctx));
             if (ev.is3D) v.transform.position = s.position;
