@@ -73,3 +73,9 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# SoddDesign
+results-*.xml
+/Tools/node_modules/
+Packages/com.sodd.sodddesign/Tools~/sodddesign-mcp/node_modules/
+/_ci/

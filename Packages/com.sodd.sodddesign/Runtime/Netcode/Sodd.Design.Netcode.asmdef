@@ -1,0 +1,16 @@
+{
+    "name": "Sodd.Design.Netcode",
+    "rootNamespace": "Sodd.Design.Netcode",
+    "references": ["Sodd.Design.Runtime", "Unity.Netcode.Runtime", "Unity.Collections"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": ["SODD_NGO"],
+    "versionDefines": [
+        { "name": "com.unity.netcode.gameobjects", "expression": "2.0.0", "define": "SODD_NGO" }
+    ],
+    "noEngineReferences": false
+}
