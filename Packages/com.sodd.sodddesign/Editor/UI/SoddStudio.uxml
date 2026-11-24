@@ -1,0 +1,66 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <Style src="SoddTheme.uss" />
+    <ui:VisualElement name="root" class="sd-root">
+        <ui:VisualElement name="toolbar" class="sd-toolbar">
+            <ui:Label text="SoddDesign Studio" class="sd-logo" />
+            <ui:Button name="btn-new-event" text="＋ Evento" class="sd-btn" tooltip="Crear un evento nuevo (path con carpetas: sfx/player/jump)" />
+            <ui:Button name="btn-new-track" text="＋ Track" class="sd-btn" tooltip="Agregar un track al evento seleccionado" />
+            <ui:VisualElement class="sd-sep" />
+            <ui:DropdownField name="snap" tooltip="Snapping al mover/redimensionar regiones" style="width: 110px;" />
+            <ui:Button name="btn-zoom-out" text="−" class="sd-btn sd-btn--icon" tooltip="Alejar (rueda del mouse)" />
+            <ui:Button name="btn-zoom-fit" text="⤢" class="sd-btn sd-btn--icon" tooltip="Ajustar el evento a la vista" />
+            <ui:Button name="btn-zoom-in" text="+" class="sd-btn sd-btn--icon" tooltip="Acercar (rueda del mouse)" />
+            <ui:VisualElement class="sd-grow" />
+            <ui:Button name="btn-mixer" text="Mixer" class="sd-btn" tooltip="Faders de buses, mute/solo y snapshots" />
+            <ui:Button name="btn-profiler" text="Profiler" class="sd-btn" tooltip="Instancias y voces en vivo" />
+            <ui:Button name="btn-validate" text="Validar" class="sd-btn" tooltip="Validar todos los eventos del proyecto" />
+            <ui:Label name="bridge-status" text="IA: off" class="sd-status" tooltip="Servidor local para la IA (MCP)" />
+        </ui:VisualElement>
+        <ui:VisualElement class="sd-main">
+            <ui:VisualElement name="browser" class="sd-panel sd-browser">
+                <ui:Label text="EVENTOS" class="sd-panel-title" />
+                <ui:TextField name="search" class="sd-search" tooltip="Buscar por path, tag o descripción" />
+                <ui:VisualElement name="tags" class="sd-tags" />
+                <ui:ListView name="tree" class="sd-grow" fixed-item-height="22" selection-type="Single" />
+            </ui:VisualElement>
+            <ui:VisualElement name="center" class="sd-center">
+                <ui:VisualElement name="ehead" class="sd-ehead">
+                    <ui:Label name="event-title" class="sd-ehead-title" />
+                    <ui:Label name="event-summary" class="sd-dim sd-grow" />
+                </ui:VisualElement>
+                <ui:VisualElement name="ruler-row" class="sd-ruler-row">
+                    <ui:Label name="ruler-corner" text="segundos" class="sd-ruler-corner" />
+                    <ui:VisualElement name="ruler-host" class="sd-ruler" />
+                </ui:VisualElement>
+                <ui:ScrollView name="tracks-scroll" class="sd-tracks-scroll" mode="Vertical">
+                    <ui:VisualElement name="tracks-row" class="sd-tracks-row">
+                        <ui:VisualElement name="track-headers" class="sd-track-headers" />
+                        <ui:VisualElement name="canvas-host" class="sd-canvas" />
+                    </ui:VisualElement>
+                </ui:ScrollView>
+                <ui:VisualElement name="empty" class="sd-empty" picking-mode="Ignore">
+                    <ui:Label name="empty-title" class="sd-empty-title" />
+                    <ui:Label name="empty-text" class="sd-empty-text" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="inspector-panel" class="sd-panel sd-inspector">
+                <ui:Label name="inspector-title" text="INSPECTOR" class="sd-panel-title" />
+                <ui:ScrollView name="inspector" class="sd-grow" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="bottom" class="sd-bottom">
+            <ui:VisualElement name="params" class="sd-params" />
+            <ui:VisualElement name="transport" class="sd-transport">
+                <ui:Button name="btn-rewind" text="⏮" class="sd-tbtn" tooltip="Volver al inicio" />
+                <ui:Button name="btn-play" text="▶" class="sd-tbtn sd-tbtn--play" tooltip="Play / Stop (Espacio)" />
+                <ui:Button name="btn-stop" text="■" class="sd-tbtn" tooltip="Stop inmediato" />
+                <ui:Label name="time" text="0.00 s" class="sd-time" />
+            </ui:VisualElement>
+            <ui:VisualElement name="meter" class="sd-meter">
+                <ui:VisualElement class="sd-meter-bar"><ui:VisualElement name="meter-l" class="sd-meter-fill" /></ui:VisualElement>
+                <ui:VisualElement class="sd-meter-bar"><ui:VisualElement name="meter-r" class="sd-meter-fill" /></ui:VisualElement>
+                <ui:Label name="meter-label" text="-∞" class="sd-meter-label" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -17,7 +17,7 @@
 - [x] Fase 1 — Runtime MVP (33 EditMode + 2 PlayMode tests en verde)
 - [x] Fase 2 — Timeline, loops, markers, parámetros, SoddCommands (40 EditMode + 2 PlayMode)
 - [x] Fase 3 — Efectos, buses, mixer, snapshots, reverb zones (47 EditMode + 2 PlayMode)
-- [ ] Fase 4 — Mockup UI → Studio + Mixer + Profiler
+- [x] Fase 4 — Mockup UI → Studio + Mixer + Profiler (49 EditMode + 2 PlayMode)
 - [ ] Fase 5 — Bridge + MCP + AI_GUIDE
 - [ ] Fase 6 — Netcode
 - [ ] Fase 7 — Addressables, docs, samples, v0.1.0
@@ -80,6 +80,23 @@
 - **SoddReverbZone**: usa un AudioReverbZone de Unity (depende de la posición del LISTENER) + sube
   `ReverbSend_Volume` del mixer según distancia del listener. `reverbSend` del track → `AudioSource.reverbZoneMix`.
 - `CI_COPYBACK="ruta1 ruta2" bash Tools/ci.sh exec Metodo` trae de vuelta archivos regenerados (ej. la escena).
+- **UI**: mockup en `Packages/com.sodd.sodddesign/Documentation~/ui-mockup.html` (abrilo en el navegador);
+  el humano no respondió todavía → se siguió el mockup como guía. Tokens en `Editor/UI/SoddTheme.uss`
+  (mismos colores que el mockup), layout en `SoddStudio.uxml`.
+- Timeline: `SoddTimelineCanvas` dibuja lanes/regiones con Painter2D (no un VisualElement por región);
+  waveforms = textura por clip (1024x64, `SoddWaveformCache`) dibujada como quad texturizado en una capa hija;
+  overlay (fades, handles, selección, markers, playhead) en otra capa hija → solo el overlay se repinta por frame.
+  Labels de región/regla: pool de Labels (pocas decenas). Drag = valores temporales; se commitea al soltar →
+  un solo paso de Undo (EditEvent con patch start+length). Shift al arrastrar = sin snap.
+- Inspector: todo campo usa `isDelayed` y llama a SoddCommands; tras cada cambio el Studio se reconstruye
+  (SoddCommands.Changed / SoddUndo.Applied / postprocessor). Moduladores: botón ＋/∿N por propiedad, cards por
+  tipo, `SoddCurveEditor` (arrastrar puntos, doble click agrega, click derecho borra).
+- Parámetros de la barra inferior: globales → motor de preview; locales → instancia en preview (se recuerdan).
+- Mixer: faders en vivo sobre el motor activo (preview o juego); "Guardar volúmenes" escribe sodd.settings.json
+  vía `SoddCommands.EditSettings` (con Undo). Profiler: refresco 10 Hz.
+- Atajos (ventana con foco y sin estar escribiendo): Espacio play/stop, S split en playhead, D duplicar,
+  Supr/Backspace borrar, F zoom-to-fit, Home inicio. Ctrl+Z/Y = Undo global de Unity.
+- `SoddStudioHooks` = punto de enganche para el bridge de IA (estado "IA: on/off" en la toolbar).
 - Datos del Sandbox regenerables: `python Tools/gen_sandbox_data.py`; schema: `python Tools/gen_schema.py`.
 
 ## QUÉ PROBAR EN UNITY
@@ -129,3 +146,21 @@
    Apretá **4** y **2**: suenan con reverb de cueva. Volvé la cámara a (0, 9, -14): sin reverb.
 5. En el Project, `Packages/SoddDesign/Runtime/Resources/SoddMixer` → Window > Audio > Audio Mixer: se ven los
    grupos (Music, SFX, UI, Voice, Ambience, ReverbSend). Mientras suena, los medidores de los grupos se mueven.
+
+### Fase 4 — SoddDesign Studio (≈3 min, sin Play Mode)
+0. (Opcional) Abrí `Packages/com.sodd.sodddesign/Documentation~/ui-mockup.html` en el navegador: es el diseño
+   de referencia. Si querés cambios de diseño, decímelo y los aplico.
+1. `Window > Sodd > SoddDesign Studio`. A la izquierda el árbol de eventos con buscador y tags.
+2. Click en `music/loop`: aparecen 2 tracks violetas (Music) con waveforms, la banda celeste del loop arriba y
+   los markers ◆ Bar1/Bar2. **Espacio** (o ▶): suena y el playhead se mueve; ■ corta.
+3. Subí **Intensity** en la barra de abajo mientras suena: entra el drone. Llevalo a 1: sale del loop.
+4. Arrastrá una región: se mueve con snap (50 ms). Arrastrá el borde derecho: cambia el largo. Arrastrá el
+   circulito de arriba a la izquierda: fade-in. **Ctrl+Z** deshace cada gesto.
+5. Click en el header del track "Drone" → Inspector del track: Volumen tiene "∿1" → click → se ve la curva de
+   Intensity; arrastrá un punto y escuchá el cambio. "＋ Efecto" → LowPass → bajá cutoff a 500.
+6. `＋ Evento` → `sfx/test/mi_evento`. Arrastrá 2-3 wavs de `Assets/Sandbox/Audio` desde el Project al timeline:
+   se crea un track con regiones. Seleccioná una región y apretá **S** (corta en el playhead), **D** (duplica),
+   **Supr** (borra).
+7. Toolbar → **Mixer**: faders de buses, M/S, y botones de snapshots (Underwater/Pause/Normal) mientras suena
+   algo. **Profiler**: instancias y voces en vivo.
+8. En Play Mode del Sandbox, editá un volumen en el Studio: se escucha el cambio al instante (live update).
