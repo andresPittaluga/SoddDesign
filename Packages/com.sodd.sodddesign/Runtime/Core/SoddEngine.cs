@@ -21,6 +21,8 @@ namespace Sodd.Design
         public float audibility;
         public int priority = 256;
         public float gain;
+        /// <summary>Volume (dB) and pitch (semitones) of the clip this voice plays, from its SoddClipRef.</summary>
+        public float clipDb, clipSemis;
         public bool paused;
         public bool Free => owner < 0;
     }
@@ -525,16 +527,16 @@ namespace Sodd.Design
                         return;
                     }
             }
-            int clipIdx = PickClip(s, ti, ri, seed);
+            int clipIdx = PickClip(s, ti, ri, seed, out var clipRef);
             if (clipIdx < 0) return;
             AudioClip clip = clipIdx < s.asset.clips.Length ? s.asset.clips[clipIdx] : null;
             if (clip == null && !Headless) return;
 
             var ctx = Ctx(s, seed, s.elapsed);
-            float semis = SoddModulation.Evaluate(ev.pitch, SoddPropKind.Semitones, ref ctx) + SoddModulation.Evaluate(ins.pitch, SoddPropKind.Semitones, ref ctx);
+            float semis = SoddModulation.Evaluate(ev.pitch, SoddPropKind.Semitones, ref ctx) + SoddModulation.Evaluate(ins.pitch, SoddPropKind.Semitones, ref ctx) + clipRef.pitch;
             float ratio = Mathf.Clamp(SoddModulation.SemitonesToRatio(semis) * s.pitchScale, 0.05f, 4f);
             float clipLen = clip != null ? clip.length : HeadlessClipLength;
-            float clipOffset = offset * ratio + Mathf.Max(0f, SoddModulation.Evaluate(ins.startOffset, SoddPropKind.Generic, ref ctx));
+            float clipOffset = offset * ratio + Mathf.Max(0f, SoddModulation.Evaluate(ins.startOffset, SoddPropKind.Generic, ref ctx) + clipRef.startOffset);
             if (ins.loop && clipLen > 0f) clipOffset %= clipLen;
             else if (clipOffset >= clipLen) return;
 
@@ -551,6 +553,7 @@ namespace Sodd.Design
             v.regionStartDsp = dsp - offset;
             v.regionLength = region.length;
             v.seed = seed; v.priority = ev.priority; v.audibility = audibility;
+            v.clipDb = clipRef.volume; v.clipSemis = clipRef.pitch;
             v.paused = false; v.gain = 0f;
             s.voices[s.voiceCount++] = v.index;
 
@@ -573,10 +576,13 @@ namespace Sodd.Design
             UpdateVoice(s, v, 0f);
         }
 
-        int PickClip(SoddInstance s, int ti, int ri, uint seed)
+        static readonly SoddClipRef NoClip = new SoddClipRef();
+
+        int PickClip(SoddInstance s, int ti, int ri, uint seed, out SoddClipRef picked)
         {
             var ins = s.ev.tracks[ti].regions[ri].instrument;
             var clips = ins.clips;
+            picked = NoClip;
             if (clips.Length == 0) return -1;
             int flat = s.asset.regionBase[ti] + ri;
             int pick;
@@ -616,6 +622,7 @@ namespace Sodd.Design
                     break;
             }
             s.asset.lastPick[flat] = pick;
+            picked = clips[pick];
             return clips[pick].clipIndex >= 0 ? clips[pick].clipIndex : (Headless ? pick : -1);
         }
 
@@ -705,7 +712,7 @@ namespace Sodd.Design
             float db = SoddModulation.Evaluate(ev.volume, SoddPropKind.GainDb, ref ctx)
                      + SoddModulation.Evaluate(track.volume, SoddPropKind.GainDb, ref ctx);
             var vctx = ctx; vctx.time = Mathf.Max(0f, local);
-            db += SoddModulation.Evaluate(ins.volume, SoddPropKind.GainDb, ref vctx);
+            db += SoddModulation.Evaluate(ins.volume, SoddPropKind.GainDb, ref vctx) + v.clipDb;
 
             float fade = 1f;
             if (region.fadeIn > 0f) fade *= SoddModulation.FadeShape(local / region.fadeIn, region.fadeInCurve);
@@ -721,7 +728,7 @@ namespace Sodd.Design
             var src = v.source;
             if (src == null) return;
             src.volume = gain;
-            float semis = SoddModulation.Evaluate(ev.pitch, SoddPropKind.Semitones, ref ctx) + SoddModulation.Evaluate(ins.pitch, SoddPropKind.Semitones, ref vctx);
+            float semis = SoddModulation.Evaluate(ev.pitch, SoddPropKind.Semitones, ref ctx) + SoddModulation.Evaluate(ins.pitch, SoddPropKind.Semitones, ref vctx) + v.clipSemis;
             src.pitch = Mathf.Clamp(SoddModulation.SemitonesToRatio(semis) * s.pitchScale, 0.05f, 4f);
             src.panStereo = Mathf.Clamp(SoddModulation.Evaluate(track.pan, SoddPropKind.Generic, ref ctx), -1f, 1f);
             src.reverbZoneMix = Mathf.Clamp01(1f + SoddModulation.Evaluate(track.reverbSend, SoddPropKind.Generic, ref ctx));

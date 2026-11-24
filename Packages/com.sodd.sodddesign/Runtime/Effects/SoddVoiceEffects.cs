@@ -4,7 +4,7 @@ namespace Sodd.Design
 {
     /// <summary>
     /// Cadena de efectos de una voz. Los componentes se crean UNA vez por voz (desactivados) y se habilitan
-    /// según los efectos del track. Orden fijo de proceso: HighPass → LowPass → Distortion → Saturator →
+    /// según los efectos del track. Orden fijo de proceso: HighPass → LowPass → ThreeEQ → Distortion → Saturator →
     /// Bitcrusher → RingMod → Chorus → Tremolo → AutoPan → Compressor → SimpleDelay → Echo → Reverb.
     /// LowPass/HighPass también aplican los filtros de snapshot del bus (se combina con el del track).
     /// </summary>
@@ -12,6 +12,7 @@ namespace Sodd.Design
     {
         readonly AudioHighPassFilter _hp;
         readonly AudioLowPassFilter _lp;
+        readonly SoddThreeEQ _eq;
         readonly AudioDistortionFilter _dist;
         readonly SoddSaturator _sat;
         readonly SoddBitcrusher _crush;
@@ -29,6 +30,7 @@ namespace Sodd.Design
             // El orden de AddComponent define el orden de proceso.
             _hp = Add<AudioHighPassFilter>(go);
             _lp = Add<AudioLowPassFilter>(go);
+            _eq = Add<SoddThreeEQ>(go);
             _dist = Add<AudioDistortionFilter>(go);
             _sat = Add<SoddSaturator>(go);
             _crush = Add<SoddBitcrusher>(go);
@@ -52,14 +54,14 @@ namespace Sodd.Design
 
         public void Disable()
         {
-            _hp.enabled = _lp.enabled = _dist.enabled = _sat.enabled = _crush.enabled = _ring.enabled = false;
+            _hp.enabled = _lp.enabled = _eq.enabled = _dist.enabled = _sat.enabled = _crush.enabled = _ring.enabled = false;
             _chorus.enabled = _trem.enabled = _pan.enabled = _comp.enabled = _delay.enabled = _echo.enabled = _reverb.enabled = false;
         }
 
         public void Configure(SoddEffect[] effects)
         {
             Disable();
-            _sat.RequestReset(); _crush.RequestReset(); _ring.RequestReset(); _trem.RequestReset();
+            _eq.RequestReset(); _sat.RequestReset(); _crush.RequestReset(); _ring.RequestReset(); _trem.RequestReset();
             _pan.RequestReset(); _comp.RequestReset(); _delay.RequestReset();
         }
 
@@ -76,7 +78,7 @@ namespace Sodd.Design
             float lpCut = bus != null ? bus.EffectiveLowpass : 22000f;
             float hpCut = bus != null ? bus.EffectiveHighpass : 10f;
             float lpQ = 1f, hpQ = 1f;
-            bool dist = false, sat = false, crush = false, ring = false, chorus = false, trem = false, pan = false, comp = false, delay = false, echo = false, reverb = false;
+            bool eq = false, dist = false, sat = false, crush = false, ring = false, chorus = false, trem = false, pan = false, comp = false, delay = false, echo = false, reverb = false;
 
             for (int e = 0; e < effects.Length; e++)
             {
@@ -97,7 +99,8 @@ namespace Sodd.Design
                         _chorus.dryMix = P(fx, 0, ref ctx, info); _chorus.wetMix1 = _chorus.wetMix2 = _chorus.wetMix3 = P(fx, 1, ref ctx, info);
                         _chorus.delay = P(fx, 2, ref ctx, info); _chorus.rate = P(fx, 3, ref ctx, info); _chorus.depth = P(fx, 4, ref ctx, info);
                         break;
-                    case "Tremolo": trem = true; for (int i = 0; i < 2; i++) _trem.SetParam(i, P(fx, i, ref ctx, info)); break;
+                    case "Tremolo": trem = true; for (int i = 0; i < 7; i++) _trem.SetParam(i, P(fx, i, ref ctx, info)); break;
+                    case "ThreeEQ": eq = true; for (int i = 0; i < 6; i++) _eq.SetParam(i, P(fx, i, ref ctx, info)); break;
                     case "AutoPan": pan = true; for (int i = 0; i < 2; i++) _pan.SetParam(i, P(fx, i, ref ctx, info)); break;
                     case "SimpleCompressor": comp = true; for (int i = 0; i < 5; i++) _comp.SetParam(i, P(fx, i, ref ctx, info)); break;
                     case "SimpleDelay": delay = true; for (int i = 0; i < 3; i++) _delay.SetParam(i, P(fx, i, ref ctx, info)); break;
@@ -115,7 +118,7 @@ namespace Sodd.Design
             bool lp = lpCut < 21990f, hp = hpCut > 10.5f;
             if (lp) { _lp.cutoffFrequency = lpCut; _lp.lowpassResonanceQ = lpQ; }
             if (hp) { _hp.cutoffFrequency = hpCut; _hp.highpassResonanceQ = hpQ; }
-            Set(_lp, lp); Set(_hp, hp); Set(_dist, dist); Set(_sat, sat); Set(_crush, crush); Set(_ring, ring); Set(_chorus, chorus);
+            Set(_lp, lp); Set(_hp, hp); Set(_eq, eq); Set(_dist, dist); Set(_sat, sat); Set(_crush, crush); Set(_ring, ring); Set(_chorus, chorus);
             Set(_trem, trem); Set(_pan, pan); Set(_comp, comp); Set(_delay, delay); Set(_echo, echo); Set(_reverb, reverb);
         }
 

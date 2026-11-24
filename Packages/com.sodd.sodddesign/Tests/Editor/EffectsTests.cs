@@ -136,5 +136,44 @@ namespace Sodd.Design.Tests
             Assert.AreEqual(0.5f, z.Weight(new Vector3(4, 0, 0)), 1e-4f);
             Assert.AreEqual(0f, z.Weight(new Vector3(10, 0, 0)), 1e-4f);
         }
+
+        [Test]
+        public void ThreeEQAtZeroDbPassesTheSignalUnchanged()
+        {
+            var f = Make<SoddThreeEQ>();
+            var d = Sine(4800, 2, 0.5f, 1000f);
+            var original = (float[])d.Clone();
+            f.Render(d, 2);
+            float maxDiff = 0;
+            for (int i = 0; i < d.Length; i++) maxDiff = Mathf.Max(maxDiff, Mathf.Abs(d[i] - original[i]));
+            Assert.Less(maxDiff, 1e-4f);
+        }
+
+        [Test]
+        public void ThreeEQCutsOnlyTheHighBand()
+        {
+            var high = Make<SoddThreeEQ>();
+            high.SetParam(2, -20.5f);
+            var hiTone = Sine(9600, 1, 0.5f, 10000f);
+            high.Render(hiTone, 1);
+            Assert.Less(Peak(hiTone, 4800), 0.5f * 0.2f, "10 kHz should drop about 20 dB");
+            Object.DestroyImmediate(_go);
+
+            var mid = Make<SoddThreeEQ>();
+            mid.SetParam(2, -20.5f);
+            var midTone = Sine(9600, 1, 0.5f, 1000f);
+            mid.Render(midTone, 1);
+            Assert.Greater(Peak(midTone, 4800), 0.5f * 0.8f, "1 kHz stays in the mid band");
+        }
+
+        [Test]
+        public void TremoloLfoFollowsFmodShapeControls()
+        {
+            Assert.AreEqual(1f, SoddTremolo.Lfo(0.25f, 1f, 0f, 0.5f, 0f), 1e-3f, "sine peak at a quarter cycle");
+            Assert.AreEqual(-1f, SoddTremolo.Lfo(0.75f, 1f, 0f, 0.5f, 0f), 1e-3f, "sine trough at three quarters");
+            Assert.AreEqual(0.5f, SoddTremolo.Lfo(0.125f, 0f, 0f, 0.5f, 0f), 1e-3f, "triangle is linear");
+            Assert.AreEqual(1f, SoddTremolo.Lfo(0.05f, 1f, 0f, 0.5f, 1f), 1e-3f, "square flattens to full level");
+            Assert.Greater(SoddTremolo.Lfo(0.8f, 1f, 0f, 0.9f, 0f), 0f, "duty 0.9 keeps 90% of the cycle in the loud half");
+        }
     }
 }

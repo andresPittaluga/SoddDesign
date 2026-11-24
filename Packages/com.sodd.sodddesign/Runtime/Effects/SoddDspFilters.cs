@@ -61,22 +61,150 @@ namespace Sodd.Design
         }
     }
 
+    /// <summary>
+    /// Volume LFO shaped like FMOD's tremolo: shape morphs triangle (0) to sine (1), duty is the share of the cycle
+    /// spent in the loud half, skew moves the peak inside each half, square flattens toward a square wave and phase
+    /// offsets the start of the cycle.
+    /// </summary>
     [AddComponentMenu(""), ExecuteAlways]
     public sealed class SoddTremolo : SoddDspFilter
     {
-        volatile float _rate = 5, _depth = 0.5f;
+        volatile float _rate = 5, _depth = 0.5f, _shape = 1f, _skew, _duty = 0.5f, _square, _phaseOffset;
         double _phase;
-        public override void SetParam(int i, float v) { if (i == 0) _rate = v; else _depth = v; }
+
+        public override void SetParam(int i, float v)
+        {
+            switch (i)
+            {
+                case 0: _rate = v; break;
+                case 1: _depth = v; break;
+                case 2: _shape = v; break;
+                case 3: _skew = v; break;
+                case 4: _duty = v; break;
+                case 5: _square = v; break;
+                default: _phaseOffset = v; break;
+            }
+        }
+
         protected override void ResetState() => _phase = 0;
+
+        /// <summary>The LFO in -1..1 at cycle position t (public for tests).</summary>
+        public static float Lfo(float t, float shape, float skew, float duty, float square)
+        {
+            t -= Mathf.Floor(t);
+            duty = Mathf.Clamp(duty, 0.01f, 0.99f);
+            bool high = t < duty;
+            float x = high ? t / duty : (t - duty) / (1f - duty);
+            float peak = Mathf.Clamp(0.5f * (1f + skew), 0.01f, 0.99f);
+            x = x < peak ? 0.5f * x / peak : 0.5f + 0.5f * (x - peak) / (1f - peak);
+            float tri = 1f - Mathf.Abs(2f * x - 1f);
+            float sine = Mathf.Sin(Mathf.PI * x);
+            float h = Mathf.Lerp(tri, sine, Mathf.Clamp01(shape));
+            h = Mathf.Lerp(h, h > 0f ? 1f : 0f, Mathf.Clamp01(square));
+            return high ? h : -h;
+        }
+
         protected override void Process(float[] d, int ch)
         {
             double inc = _rate / sampleRate; float depth = Mathf.Clamp01(_depth);
+            float shape = _shape, skew = _skew, duty = _duty, square = _square, offset = _phaseOffset;
             for (int i = 0; i < d.Length; i += ch)
             {
-                float g = 1f - depth * 0.5f * (1f + Mathf.Sin((float)(_phase * 2.0 * Mathf.PI)));
+                float lfo = Lfo((float)_phase + offset, shape, skew, duty, square);
+                float g = 1f - depth * 0.5f * (1f - lfo);
                 _phase += inc; if (_phase >= 1.0) _phase -= 1.0;
                 for (int c = 0; c < ch; c++) d[i + c] *= g;
             }
+        }
+    }
+
+    /// <summary>
+    /// Three band EQ like FMOD's: a low shelf at the low crossover and a high shelf at the high crossover, relative to
+    /// the mid gain. Steeper slopes cascade more shelves. With every gain at 0 dB the signal passes unchanged.
+    /// </summary>
+    [AddComponentMenu(""), ExecuteAlways]
+    public sealed class SoddThreeEQ : SoddDspFilter
+    {
+        const int MaxChannels = 8, MaxStages = 4;
+        volatile float _low, _mid, _high, _lowX = 400f, _highX = 4000f, _slope = 24f;
+        float _cLow = float.NaN, _cMid, _cHigh, _cLowX, _cHighX, _cSlope;
+        readonly Biquad[] _ls = new Biquad[MaxChannels * MaxStages], _hs = new Biquad[MaxChannels * MaxStages];
+        Coeffs _lsC, _hsC;
+        float _midGain = 1f;
+        int _stages = 2;
+
+        struct Coeffs { public float b0, b1, b2, a1, a2; }
+
+        struct Biquad
+        {
+            float _z1, _z2;
+            public float Run(float x, in Coeffs c)
+            {
+                float y = c.b0 * x + _z1;
+                _z1 = c.b1 * x - c.a1 * y + _z2;
+                _z2 = c.b2 * x - c.a2 * y;
+                return y;
+            }
+        }
+
+        public override void SetParam(int i, float v)
+        {
+            switch (i)
+            {
+                case 0: _low = v; break;
+                case 1: _mid = v; break;
+                case 2: _high = v; break;
+                case 3: _lowX = v; break;
+                case 4: _highX = v; break;
+                default: _slope = v; break;
+            }
+        }
+
+        protected override void ResetState()
+        {
+            for (int i = 0; i < _ls.Length; i++) { _ls[i] = default; _hs[i] = default; }
+        }
+
+        // RBJ cookbook shelf, slope S = 1.
+        Coeffs Shelf(float freq, float db, bool high)
+        {
+            float a = Mathf.Pow(10f, db / 40f);
+            float w = 2f * Mathf.PI * Mathf.Clamp(freq, 10f, sampleRate * 0.45f) / sampleRate;
+            float cos = Mathf.Cos(w), alpha = Mathf.Sin(w) * 0.5f * Mathf.Sqrt(2f), k = 2f * Mathf.Sqrt(a) * alpha;
+            float b0, b1, b2, a0, a1, a2;
+            if (high)
+            {
+                b0 = a * ((a + 1) + (a - 1) * cos + k); b1 = -2 * a * ((a - 1) + (a + 1) * cos); b2 = a * ((a + 1) + (a - 1) * cos - k);
+                a0 = (a + 1) - (a - 1) * cos + k; a1 = 2 * ((a - 1) - (a + 1) * cos); a2 = (a + 1) - (a - 1) * cos - k;
+            }
+            else
+            {
+                b0 = a * ((a + 1) - (a - 1) * cos + k); b1 = 2 * a * ((a - 1) - (a + 1) * cos); b2 = a * ((a + 1) - (a - 1) * cos - k);
+                a0 = (a + 1) + (a - 1) * cos + k; a1 = -2 * ((a - 1) + (a + 1) * cos); a2 = (a + 1) + (a - 1) * cos - k;
+            }
+            return new Coeffs { b0 = b0 / a0, b1 = b1 / a0, b2 = b2 / a0, a1 = a1 / a0, a2 = a2 / a0 };
+        }
+
+        protected override void Process(float[] d, int ch)
+        {
+            float low = _low, mid = _mid, high = _high, lowX = _lowX, highX = Mathf.Max(_highX, _lowX + 1f), slope = _slope;
+            if (low != _cLow || mid != _cMid || high != _cHigh || lowX != _cLowX || highX != _cHighX || slope != _cSlope)
+            {
+                _cLow = low; _cMid = mid; _cHigh = high; _cLowX = lowX; _cHighX = highX; _cSlope = slope;
+                _stages = slope <= 12f ? 1 : slope <= 24f ? 2 : MaxStages;
+                _lsC = Shelf(lowX, (low - mid) / _stages, false);
+                _hsC = Shelf(highX, (high - mid) / _stages, true);
+                _midGain = Mathf.Pow(10f, mid / 20f);
+            }
+            int n = Mathf.Min(ch, MaxChannels);
+            for (int i = 0; i < d.Length; i += ch)
+                for (int c = 0; c < n; c++)
+                {
+                    float x = d[i + c] * _midGain;
+                    for (int s = 0; s < _stages; s++) x = _ls[c * MaxStages + s].Run(x, _lsC);
+                    for (int s = 0; s < _stages; s++) x = _hs[c * MaxStages + s].Run(x, _hsC);
+                    d[i + c] = x;
+                }
         }
     }
 

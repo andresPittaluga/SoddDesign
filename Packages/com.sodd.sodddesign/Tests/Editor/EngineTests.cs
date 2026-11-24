@@ -315,5 +315,24 @@ namespace Sodd.Design.Tests
             NUnit.Framework.CollectionAssert.AreEqual(new[] { 0, 1, 2, 0 }, SequentialPicks("Global"), "Global: one order for every instance");
             NUnit.Framework.CollectionAssert.AreEqual(new[] { 0, 1, 0, 2 }, SequentialPicks("Instance"), "Instance: each instance keeps its own order");
         }
+
+        [NUnit.Framework.Test]
+        public void ClipVolumeAddsToTheVoiceGain()
+        {
+            var e = TestUtil.Headless();
+            e.HeadlessClipLength = 2f;
+            string region = "{ \"start\": 0, \"length\": 1, \"instrument\": { \"type\": \"RandomClip\", \"clips\": [ { \"path\": \"Assets/a.wav\", \"volume\": -6.0206, \"pitch\": 12, \"startOffset\": 0.5 } ] } }";
+            var a = TestUtil.MakeAsset(TestUtil.Event("clipprops", "", TestUtil.Track(region)));
+            var clip = a.data.tracks[0].regions[0].instrument.clips[0];
+            NUnit.Framework.Assert.AreEqual(12f, clip.pitch, 1e-4f);
+            NUnit.Framework.Assert.AreEqual(0.5f, clip.startOffset, 1e-4f);
+            var inst = e.CreateInstance(a);
+            inst.Start();
+            TestUtil.Run(e, 0, 0.2);
+            float gain = -1f;
+            for (int k = 0; k < e.VoiceCount; k++)
+                if (e.GetVoice(k, out _, out _, out _, out float g)) gain = g;
+            NUnit.Framework.Assert.AreEqual(0.5f, gain, 0.01f, "-6 dB on the clip halves the voice");
+        }
     }
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.7] - 2026-11-24
+- Efecto nuevo `ThreeEQ` (graves/medios/agudos con cruces y pendiente, como el de FMOD).
+- `Tremolo`: `shape`, `skew`, `duty`, `square` y `phase` (forma del LFO como en FMOD). Sin cambios con los valores por defecto.
+- Clips de `RandomClip`/`Sequential` con `volume` (dB), `pitch` (semitonos) y `startOffset` (s) propios.
+
 ## [0.1.6] - 2026-11-24
 - `Sequential`: nuevo `sequenceScope` (`Global` por defecto, el orden sigue entre todas las instancias del evento; `Instance`, cada instancia lleva su propio orden). Se elige en el inspector del Studio.
 

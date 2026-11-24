@@ -115,6 +115,12 @@ namespace Sodd.Design
         public string guid;
         public string path;
         public float weight = 1f;
+        /// <summary>Volume of this clip in dB, added to the instrument's (per sound of a playlist).</summary>
+        public float volume;
+        /// <summary>Pitch of this clip in semitones, added to the instrument's.</summary>
+        public float pitch;
+        /// <summary>Seconds of this clip to skip, added to the instrument's start offset.</summary>
+        public float startOffset;
         /// <summary>Índice en SoddEventAsset.clips (resuelto al importar; -1 si falta).</summary>
         public int clipIndex = -1;
     }

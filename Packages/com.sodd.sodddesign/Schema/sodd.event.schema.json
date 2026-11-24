@@ -416,6 +416,22 @@
               "description": "Peso relativo para RandomClip.",
               "minimum": 0,
               "default": 1
+            },
+            "volume": {
+              "type": "number",
+              "description": "Volumen de este clip en dB, se suma al del instrumento.",
+              "default": 0
+            },
+            "pitch": {
+              "type": "number",
+              "description": "Pitch de este clip en semitonos, se suma al del instrumento.",
+              "default": 0
+            },
+            "startOffset": {
+              "type": "number",
+              "description": "Segundos a saltear de este clip, se suman al startOffset del instrumento.",
+              "minimum": 0,
+              "default": 0
             }
           }
         }
@@ -560,6 +576,7 @@
           "enum": [
             "LowPass",
             "HighPass",
+            "ThreeEQ",
             "Echo",
             "Reverb",
             "Distortion",

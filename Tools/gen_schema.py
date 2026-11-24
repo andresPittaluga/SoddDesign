@@ -10,7 +10,7 @@ def b(desc): return {'type': 'boolean', 'description': desc}
 def ref(name, desc): return {'$ref': '#/$defs/' + name, 'description': desc}
 def arr(items, desc): return {'type': 'array', 'items': items, 'description': desc}
 
-EFFECTS = ['LowPass', 'HighPass', 'Echo', 'Reverb', 'Distortion', 'Chorus', 'Bitcrusher', 'Tremolo', 'AutoPan',
+EFFECTS = ['LowPass', 'HighPass', 'ThreeEQ', 'Echo', 'Reverb', 'Distortion', 'Chorus', 'Bitcrusher', 'Tremolo', 'AutoPan',
            'RingMod', 'Saturator', 'SimpleDelay', 'SimpleCompressor']
 
 schema = {
@@ -114,6 +114,9 @@ schema = {
                 {'type': 'object', 'additionalProperties': False, 'description': 'Clip con GUID.', 'properties': {
                     'guid': s('GUID del asset de Unity (del .meta).'), 'path': s('Path del asset (legible).'),
                     'weight': num('Peso relativo para RandomClip.', minimum=0, default=1),
+                    'volume': num('Volumen de este clip en dB, se suma al del instrumento.', default=0),
+                    'pitch': num('Pitch de este clip en semitonos, se suma al del instrumento.', default=0),
+                    'startOffset': num('Segundos a saltear de este clip, se suman al startOffset del instrumento.', minimum=0, default=0),
                 }},
             ],
         },

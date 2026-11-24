@@ -44,7 +44,14 @@ namespace Sodd.Design
             new EffectInfo { name = "Bitcrusher", description = "Reduce bits y frecuencia de muestreo: sonido lo-fi, retro, roto.", parameters = new[] {
                 P("bits", 8, 1, 16, "bits", "Resolución"), P("downsample", 4, 1, 64, "x", "Factor de reducción de sample rate"), P("mix", 1, 0, 1, "linear", "Mezcla procesado/original") } },
             new EffectInfo { name = "Tremolo", description = "Modula el volumen periódicamente (vibra, titila).", parameters = new[] {
-                P("rate", 5, 0.01f, 40, "Hz", "Velocidad"), P("depth", 0.5f, 0, 1, "linear", "Profundidad") } },
+                P("rate", 5, 0.01f, 40, "Hz", "Velocidad"), P("depth", 0.5f, 0, 1, "linear", "Profundidad"),
+                P("shape", 1, 0, 1, "linear", "Forma: 0 triángulo, 1 seno"), P("skew", 0, -1, 1, "linear", "Corre el pico dentro de cada mitad del ciclo"),
+                P("duty", 0.5f, 0, 1, "linear", "Parte del ciclo en la mitad fuerte"), P("square", 0, 0, 1, "linear", "Aplana hacia onda cuadrada"),
+                P("phase", 0, 0, 1, "linear", "Desfase del inicio del ciclo") } },
+            new EffectInfo { name = "ThreeEQ", description = "Ecualizador de 3 bandas (graves, medios, agudos) con cruces ajustables.", parameters = new[] {
+                P("lowGain", 0, -80, 10, "dB", "Ganancia de graves"), P("midGain", 0, -80, 10, "dB", "Ganancia de medios"),
+                P("highGain", 0, -80, 10, "dB", "Ganancia de agudos"), P("lowCrossover", 400, 10, 22000, "Hz", "Cruce graves/medios"),
+                P("highCrossover", 4000, 10, 22000, "Hz", "Cruce medios/agudos"), P("slope", 24, 12, 48, "dB/oct", "Pendiente de los cruces (12, 24 o 48)") } },
             new EffectInfo { name = "AutoPan", description = "Mueve el sonido de izquierda a derecha periódicamente.", parameters = new[] {
                 P("rate", 1, 0.01f, 20, "Hz", "Velocidad"), P("depth", 1, 0, 1, "linear", "Profundidad") } },
             new EffectInfo { name = "RingMod", description = "Modulador en anillo: metálico, robótico.", parameters = new[] {

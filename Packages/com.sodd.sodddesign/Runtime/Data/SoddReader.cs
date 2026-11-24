@@ -22,7 +22,7 @@ namespace Sodd.Design
         static readonly string[] TrackKeys = { "name", "type", "volume", "pan", "reverbSend", "mute", "solo", "bus", "effects", "regions" };
         static readonly string[] RegionKeys = { "name", "start", "length", "fadeIn", "fadeOut", "fadeInCurve", "fadeOutCurve", "instrument" };
         static readonly string[] InstrumentKeys = { "type", "clips", "clip", "avoidRepeat", "sequenceScope", "loop", "nestedEvent", "volume", "pitch", "startOffset" };
-        static readonly string[] ClipKeys = { "guid", "path", "weight" };
+        static readonly string[] ClipKeys = { "guid", "path", "weight", "volume", "pitch", "startOffset" };
         static readonly string[] ModPropKeys = { "base", "modulators" };
         static readonly string[] ModKeys = { "type", "min", "max", "unit", "perTrigger", "parameter", "curve", "range", "shape", "rate", "depth", "phase", "attack", "hold", "decay", "sustain", "release" };
         static readonly string[] ParamKeys = { "name", "description", "min", "max", "default", "seekSpeed", "scope" };
@@ -420,6 +420,9 @@ namespace Sodd.Design
             c.guid = Str(n, "guid", path);
             c.path = Str(n, "path", path);
             c.weight = Num(n, "weight", path, 1f, 0f);
+            c.volume = Num(n, "volume", path, 0f);
+            c.pitch = Num(n, "pitch", path, 0f);
+            c.startOffset = Num(n, "startOffset", path, 0f, 0f);
             if (string.IsNullOrEmpty(c.guid) && string.IsNullOrEmpty(c.path)) Err(path, "el clip necesita 'guid' o 'path'");
             return c;
         }
