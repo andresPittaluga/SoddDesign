@@ -1,6 +1,6 @@
 {
   "name": "com.sodd.sodddesign",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "displayName": "SoddDesign",
   "description": "Audio middleware gratuito para Unity (estilo FMOD) de Sodd Studio: eventos con timeline, moduladores, efectos, buses, snapshots, editor visual (SoddDesign Studio) y puente MCP para IA.",
   "unity": "6000.0",

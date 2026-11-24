@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.1.8] - 2026-11-24
+- `SoddRegistry` y cada filtro DSP viven en un archivo con su nombre: en un build el registro cargaba sin script y ningún evento sonaba.
+
 ## [0.1.7] - 2026-11-24
 - Efecto nuevo `ThreeEQ` (graves/medios/agudos con cruces y pendiente, como el de FMOD).
 - `Tremolo`: `shape`, `skew`, `duty`, `square` y `phase` (forma del LFO como en FMOD). Sin cambios con los valores por defecto.
