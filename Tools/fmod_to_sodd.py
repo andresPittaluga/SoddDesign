@@ -222,7 +222,7 @@ def convert(objs, ev, fmod_root, unity_root, warn):
                 if len(inner) == 1 and inner[0] is not None and inner[0].get('class') == 'MultiSound': layers.append(inner[0])
                 else: break
             playlist = layers[-1]
-            clips, flen = [], 0
+            clips, flen, lens = [], 0, []
             def gather(o):
                 nonlocal flen
                 for s in R(o, 'sounds'):
@@ -232,11 +232,21 @@ def convert(objs, ev, fmod_root, unity_root, warn):
                         warn(f'{path}: playlist anidada junto a otros sonidos, se aplanan sus clips')
                         gather(so); continue
                     c, l = clip_of((R(so, 'audioFile') or [None])[0])
-                    if c: clips.append(c); flen = max(flen, l)
+                    if c: clips.append(c); flen = max(flen, l); lens.append(l)
             gather(playlist)
             if not clips: return None  # MultiSound vacío en FMOD: no suena
-            ins = {'type': 'Sequential' if P(playlist, 'playlistMode') == '1' else 'RandomClip', 'clips': clips}
-            if ins['type'] == 'RandomClip': ins['avoidRepeat'] = True
+            # FMOD Studio playlist modes: none = Shuffle, 1 = Random, 3 = Sequential (global), 4 = Sequential (per instance).
+            mode = P(playlist, 'playlistMode')
+            if mode in ('3', '4', '2'):
+                ins = {'type': 'Sequential', 'clips': clips}
+                if mode == '4': ins['sequenceScope'] = 'Instance'
+                if mode == '2': warn(f'{path}: playlistMode=2 se trata como Sequential global')
+            else:
+                ins = {'type': 'RandomClip', 'clips': clips, 'avoidRepeat': mode != '1'}
+                if mode not in (None, '0', '1'): warn(f'{path}: playlistMode={mode} desconocido, queda Shuffle')
+            # The multi instrument start offset is a percentage of each sound.
+            pct = sum(F(o, 'startOffset') for o in layers)
+            if pct > 0 and lens: ins['_off'] = pct / 100.0 * min(lens)
             for inner in layers[1:]:
                 vol, pit = F(inner, 'volume'), F(inner, 'pitch')
                 ip, iv = convert_mods(objs, inner, path, warn, 'instrumento')
@@ -247,7 +257,7 @@ def convert(objs, ev, fmod_root, unity_root, warn):
             warn(f'{path}: instrumento {cls} no soportado'); return None
         length = F(mo, 'length', flen or 1.0)
         if P(mo, 'looping') == 'true': ins['loop'] = True
-        off = F(mo, 'timelockedOffset')
+        off = F(mo, 'timelockedOffset') + ins.pop('_off', 0)
         if off > 0: ins['startOffset'] = rnd(off)
         vol = F(mo, 'volume') + ins.pop('_vol', 0)
         pit = F(mo, 'pitch') + ins.pop('_pit', 0)
