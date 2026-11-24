@@ -51,15 +51,72 @@ def convert_mods(objs, owner, path, warn, where):
                 pitch.append({'type': 'Random', 'min': rnd(-st / 2, 3), 'max': rnd(st / 2, 3), 'unit': 'Semitones'})
             elif prop == 'volume':
                 vol.append({'type': 'Random', 'min': rnd(-amt, 2), 'max': 0, 'unit': 'dB'})
+            elif prop == 'startOffset': pass  # read by inst_region, it needs the clip length
             else: warn(f'{path}: randomizer de {prop} ({where}) no convertido')
         elif cls == 'ADSRModulator' and prop == 'volume':
-            vol.append({'type': 'ADSR', 'attack': rnd(F(mo, 'attackTime') / 1000), 'decay': rnd(F(mo, 'decayTime') / 1000),
-                        'sustain': rnd(F(mo, 'sustainLevel', 1)), 'release': rnd(F(mo, 'releaseTime') / 1000)})
+            if F(mo, 'initialValue', -80) > -79 or F(mo, 'finalValue', -80) > -79:
+                warn(f'{path}: ADSR con valor inicial/final audible ({where}): se aproxima desde silencio')
+            vol.append({'type': 'ADSR', 'attack': rnd(F(mo, 'attackTime') / 1000), 'hold': rnd(F(mo, 'holdTime') / 1000),
+                        'decay': rnd(F(mo, 'decayTime') / 1000), 'sustain': rnd(10 ** (F(mo, 'sustainValue', 0) / 20), 4),
+                        'release': rnd(F(mo, 'releaseTime') / 1000)})
         else: warn(f'{path}: modulador {cls} sobre {prop} ({where}) no convertido')
     return pitch, vol
 
 import math as _m
 def st(r): return round(12 * _m.log2(max(r, 1e-4)), 2)
+
+IGNORED_EFFECTS = {'SpatialiserEffect', 'MixerBusFader', 'MixerBusPanner'}
+
+def fmod_effect(eo, path, warn):
+    """One FMOD effect with its static values -> SoddDesign effect, or None."""
+    cls = eo.get('class')
+    if cls == 'TremoloEffect':
+        return {'type': 'Tremolo', 'params': {
+            'rate': rnd(F(eo, 'frequency', 5)), 'depth': rnd(F(eo, 'depth', 1)), 'shape': rnd(F(eo, 'shape', 0)),
+            'skew': rnd(F(eo, 'skew', 0)), 'duty': rnd(F(eo, 'duty', 0.5)), 'square': rnd(F(eo, 'square', 0)),
+            'phase': rnd(F(eo, 'phase', 0))}}
+    if cls == 'ChorusEffect':
+        mix = F(eo, 'mix', 50) / 100
+        return {'type': 'Chorus', 'params': {'dryMix': rnd(1 - mix), 'wetMix': rnd(mix), 'rate': rnd(F(eo, 'rate', 0.8)),
+                                             'depth': rnd(F(eo, 'depth', 3) / 100)}}
+    if cls == 'ThreeEQEffect':
+        return {'type': 'ThreeEQ', 'params': {
+            'lowGain': rnd(F(eo, 'lowGain', 0)), 'midGain': rnd(F(eo, 'midGain', 0)), 'highGain': rnd(F(eo, 'highGain', 0)),
+            'lowCrossover': rnd(F(eo, 'lowCrossover', 400)), 'highCrossover': rnd(F(eo, 'highCrossover', 4000)),
+            'slope': {'0': 12, '1': 24, '2': 48}.get(P(eo, 'crossoverSlope', '1'), 24)}}
+    if cls == 'DistortionEffect':
+        return {'type': 'Distortion', 'params': {'level': rnd(F(eo, 'level', 0.5))}}
+    if cls == 'LowpassSimpleEffect' or cls == 'LowpassEffect':
+        return {'type': 'LowPass', 'params': {'cutoff': rnd(F(eo, 'cutoff', 5000)), 'resonance': rnd(F(eo, 'resonance', 1))}}
+    if cls == 'HighpassSimpleEffect' or cls == 'HighpassEffect':
+        return {'type': 'HighPass', 'params': {'cutoff': rnd(F(eo, 'cutoff', 500)), 'resonance': rnd(F(eo, 'resonance', 1))}}
+    warn(f'{path}: efecto {cls} no convertido')
+    return None
+
+def apply_effects(objs, out, tracks, master, path, warn):
+    """Static effects of the event master (every track) and of each track's own chain, in FMOD's order."""
+    def chain(owner):
+        return [objs[e] for ch in R(owner, 'effectChain') for e in R(objs.get(ch), 'effects') if e in objs]
+    def add(track, eo):
+        cls = eo.get('class')
+        if cls in IGNORED_EFFECTS: return
+        if cls == 'PitchShifterEffect':
+            # Only its randomizer is static; its automations are handled with the automations.
+            ip, _ = convert_mods(objs, eo, path, warn, 'pitch shifter')
+            for r in track['regions']:
+                ins = r['instrument']
+                p = ins.get('pitch', 0)
+                if not isinstance(p, dict): p = {'base': p, 'modulators': []}
+                p['modulators'] = p.get('modulators', []) + ip
+                if p['modulators']: ins['pitch'] = p
+            return
+        fx = fmod_effect(eo, path, warn)
+        if fx: track.setdefault('effects', []).append(fx)
+    master_chain = chain(master) if master is not None else []
+    for t in tracks:
+        for eo in master_chain: add(t, eo)
+        if t.get('_mg'):
+            for eo in chain(objs.get(t['_mg'])): add(t, eo)
 
 def apply_automations(objs, ev, out, tracks, master, path, warn):
     owners = {}
@@ -74,7 +131,7 @@ def apply_automations(objs, ev, out, tracks, master, path, warn):
     master_fx = set(e for ch in R(master, 'effectChain') for e in R(objs.get(ch), 'effects')) if master is not None else set()
     params = {}
     def regions_of(mod):
-        return [r for t in tracks for r in t['regions'] if r.get('_mod') == mod]
+        return [r for t in tracks for r in t['regions'] if r.get('_mod') == mod or r.get('_alias') == mod]
     for a, tgt in owners.items():
         ao = objs.get(a); prop = P(ao, 'nameOfPropertyBeingAutomated'); cls = tgt.get('class')
         for c in R(ao, 'automationCurves'):
@@ -167,6 +224,9 @@ def convert(objs, ev, fmod_root, unity_root, warn):
         lo, hi = rnd(F(props, 'minimumDistance', 1)), rnd(F(props, 'maximumDistance', 20))
         out['spatial'] = {'minDistance': lo, 'maxDistance': hi}
         out['spatial'].update(fmod_rolloff(P(spatialiser, 'distanceRolloffType', '0'), lo, hi, path, warn))
+    if P(props, 'triggerCooldown') is not None: out['cooldown'] = rnd(F(props, 'triggerCooldown') / 1000)
+    if P(props, 'priority') is not None:
+        out['priority'] = {'0': 32, '1': 64, '2': 128, '3': 192, '4': 224}.get(P(props, 'priority'), 128)
     if P(props, 'maxVoices') is not None:
         out['maxInstances'] = int(F(props, 'maxVoices'))
         steal = P(props, 'voiceStealing')
@@ -214,6 +274,12 @@ def convert(objs, ev, fmod_root, unity_root, warn):
             clip, flen = clip_of((R(mo, 'audioFile') or [None])[0])
             if clip is None: return None
             ins = {'type': 'SingleClip', 'clip': clip}
+            pct = F(mo, 'startOffset')
+            if pct > 0: ins['_off'] = pct / 100.0 * flen
+            for mm in R(mo, 'modulators'):
+                mmo = objs.get(mm)
+                if mmo is not None and mmo.get('class') == 'RandomizerModulator' and P(mmo, 'nameOfPropertyBeingModulated') == 'startOffset':
+                    ins['_offRandom'] = F(mmo, 'amount') / 100.0 * flen
         elif cls == 'MultiSound':
             # A playlist that only wraps another playlist plays the inner one: unwrap it and keep both levels' props.
             layers = [mo]
@@ -232,22 +298,52 @@ def convert(objs, ev, fmod_root, unity_root, warn):
                         warn(f'{path}: playlist anidada junto a otros sonidos, se aplanan sus clips')
                         gather(so); continue
                     c, l = clip_of((R(so, 'audioFile') or [None])[0])
-                    if c: clips.append(c); flen = max(flen, l); lens.append(l)
-            gather(playlist)
-            if not clips: return None  # MultiSound vacío en FMOD: no suena
-            # FMOD Studio playlist modes: none = Shuffle, 1 = Random, 3 = Sequential (global), 4 = Sequential (per instance).
-            mode = P(playlist, 'playlistMode')
-            if mode in ('3', '4', '2'):
-                ins = {'type': 'Sequential', 'clips': clips}
-                if mode == '4': ins['sequenceScope'] = 'Instance'
-                if mode == '2': warn(f'{path}: playlistMode=2 se trata como Sequential global')
+                    if not c: continue
+                    # Each sound of a playlist keeps its own volume, pitch and start offset (a % of the sound).
+                    entry = {'path': c}
+                    if F(so, 'volume'): entry['volume'] = rnd(F(so, 'volume'), 2)
+                    if F(so, 'pitch'): entry['pitch'] = rnd(F(so, 'pitch'), 2)
+                    if F(so, 'startOffset') > 0: entry['startOffset'] = rnd(F(so, 'startOffset') / 100.0 * l)
+                    if P(so, 'looping') == 'true': warn(f'{path}: loop de un sonido dentro de una playlist no convertido')
+                    if R(so, 'modulators') or R(so, 'automators'): warn(f'{path}: moduladores/automatizaciones de un sonido dentro de una playlist no convertidos')
+                    clips.append(entry if len(entry) > 1 else c); flen = max(flen, l); lens.append(l)
+            only = [objs.get(s) for s in R(playlist, 'sounds')]
+            if len(only) == 1 and only[0] is not None and only[0].get('class') == 'SingleSound':
+                so = only[0]
+                c, l = clip_of((R(so, 'audioFile') or [None])[0])
+                if not c: return None
+                flen = l
+                ins = {'type': 'SingleClip', 'clip': c}
+                if P(so, 'looping') == 'true': ins['loop'] = True
+                pct = F(so, 'startOffset') + sum(F(o, 'startOffset') for o in layers)
+                if pct > 0: ins['_off'] = pct / 100.0 * l
+                ins['_vol'] = F(so, 'volume') + sum(F(o, 'volume') for o in layers[1:])
+                ins['_pit'] = F(so, 'pitch') + sum(F(o, 'pitch') for o in layers[1:])
+                mp, mv = [], []
+                for o in layers[1:] + [so]:
+                    ip, iv = convert_mods(objs, o, path, warn, 'instrumento')
+                    mp += ip; mv += iv
+                ins['_mp'] = mp; ins['_mv'] = mv
+                ins['_alias'] = so.get('id')
             else:
-                ins = {'type': 'RandomClip', 'clips': clips, 'avoidRepeat': mode != '1'}
-                if mode not in (None, '0', '1'): warn(f'{path}: playlistMode={mode} desconocido, queda Shuffle')
-            # The multi instrument start offset is a percentage of each sound.
-            pct = sum(F(o, 'startOffset') for o in layers)
-            if pct > 0 and lens: ins['_off'] = pct / 100.0 * min(lens)
-            for inner in layers[1:]:
+                gather(playlist)
+            if ins.get('type') == 'SingleClip':
+                pass
+            elif not clips: return None  # MultiSound vacío en FMOD: no suena
+            else:
+                # FMOD Studio playlist modes: none = Shuffle, 1 = Random, 3 = Sequential (global), 4 = Sequential (per instance).
+                mode = P(playlist, 'playlistMode')
+                if mode in ('3', '4', '2'):
+                    ins = {'type': 'Sequential', 'clips': clips}
+                    if mode == '4': ins['sequenceScope'] = 'Instance'
+                    if mode == '2': warn(f'{path}: playlistMode=2 se trata como Sequential global')
+                else:
+                    ins = {'type': 'RandomClip', 'clips': clips, 'avoidRepeat': mode != '1'}
+                    if mode not in (None, '0', '1'): warn(f'{path}: playlistMode={mode} desconocido, queda Shuffle')
+                # The multi instrument start offset is a percentage of each sound.
+                pct = sum(F(o, 'startOffset') for o in layers)
+                if pct > 0 and lens: ins['_off'] = pct / 100.0 * min(lens)
+            for inner in ([] if ins.get('type') == 'SingleClip' else layers[1:]):
                 vol, pit = F(inner, 'volume'), F(inner, 'pitch')
                 ip, iv = convert_mods(objs, inner, path, warn, 'instrumento')
                 if vol: ins['_vol'] = ins.get('_vol', 0) + vol
@@ -258,7 +354,9 @@ def convert(objs, ev, fmod_root, unity_root, warn):
         length = F(mo, 'length', flen or 1.0)
         if P(mo, 'looping') == 'true': ins['loop'] = True
         off = F(mo, 'timelockedOffset') + ins.pop('_off', 0)
-        if off > 0: ins['startOffset'] = rnd(off)
+        off_random = ins.pop('_offRandom', 0)
+        if off_random > 0: ins['startOffset'] = {'base': rnd(off), 'modulators': [{'type': 'Random', 'min': 0, 'max': rnd(off_random)}]}
+        elif off > 0: ins['startOffset'] = rnd(off)
         vol = F(mo, 'volume') + ins.pop('_vol', 0)
         pit = F(mo, 'pitch') + ins.pop('_pit', 0)
         if P(mo, 'volume') is not None or vol: ins['volume'] = rnd(vol, 2)
@@ -267,7 +365,9 @@ def convert(objs, ev, fmod_root, unity_root, warn):
         ip += ins.pop('_mp', []); iv += ins.pop('_mv', [])
         if ip: ins['pitch'] = {'base': ins.get('pitch', 0), 'modulators': ip}
         if iv: ins['volume'] = {'base': ins.get('volume', 0), 'modulators': iv}
+        alias = ins.pop('_alias', None)
         reg = {'start': rnd(start), 'length': rnd(length), 'instrument': ins, '_mod': m}
+        if alias: reg['_alias'] = alias
         fi, fo = fade(mo, 'fadeInCurve'), fade(mo, 'fadeOutCurve')
         if fi > 0: reg['fadeIn'] = rnd(fi)
         if fo > 0: reg['fadeOut'] = rnd(fo)
@@ -298,10 +398,11 @@ def convert(objs, ev, fmod_root, unity_root, warn):
             if reg is None: continue
             if consecutive: t0 += reg['length']
             tracks.append({'name': f'Action {k + 1}', 'type': 'Music' if out['bus'] == 'Music' else 'SFX', 'regions': [reg]})
+    apply_effects(objs, out, tracks, master, path, warn)
     apply_automations(objs, ev, out, tracks, master, path, warn)
     for t in tracks:
         t.pop('_mg', None)
-        for r in t['regions']: r.pop('_mod', None)
+        for r in t['regions']: r.pop('_mod', None); r.pop('_alias', None)
     out['tracks'] = tracks
     tl = objs.get((R(ev, 'timeline') or [None])[0])
     loops, markers = [], []
