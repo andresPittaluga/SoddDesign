@@ -47,7 +47,7 @@ namespace Sodd.Design.Tests
         [UnityTest]
         public IEnumerator RealSocketRoundTrip()
         {
-            SoddBridge.Start();
+            SoddBridge.Start(0);
             Assert.IsTrue(SoddBridge.IsRunning, "el bridge no arrancó");
             var cfg = SoddJson.Parse(File.ReadAllText(SoddBridge.ConfigPath));
             Assert.AreEqual("127.0.0.1", cfg["host"].String);

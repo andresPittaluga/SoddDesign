@@ -165,14 +165,31 @@ namespace Sodd.Design.Editor
         static bool s_pending;
         public static event Action Changed;
 
+        internal static void ReimportEventsWithMissingClips()
+        {
+            foreach (var a in SoddProjectFiles.AllEventAssets())
+            {
+                bool missing = false;
+                foreach (var w in a.importWarnings) if (w.Contains("no se encontró el AudioClip")) { missing = true; break; }
+                if (missing) AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(a), ImportAssetOptions.ForceUpdate);
+            }
+        }
+
         static bool Relevant(string p) =>
             p.EndsWith(SoddProjectFiles.EventExt, StringComparison.OrdinalIgnoreCase) ||
             p.EndsWith(SoddProjectFiles.ParametersFile, StringComparison.OrdinalIgnoreCase) ||
             p.EndsWith(SoddProjectFiles.SettingsFile, StringComparison.OrdinalIgnoreCase) ||
             (p.EndsWith(".asset", StringComparison.OrdinalIgnoreCase) && AssetDatabase.GetMainAssetTypeAtPath(p) == typeof(SoddBank));
 
+        static readonly string[] AudioExts = { ".wav", ".mp3", ".ogg", ".aif", ".aiff", ".flac", ".m4a" };
+        static bool IsAudio(string p) { foreach (var e in AudioExts) if (p.EndsWith(e, StringComparison.OrdinalIgnoreCase)) return true; return false; }
+
         static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
         {
+            // Primer import de un proyecto: los .sodd.json pueden importarse antes que sus AudioClips.
+            // Si llegan audios nuevos, reimportar los eventos que quedaron con clips faltantes.
+            if (imported.Any(IsAudio) || moved.Any(IsAudio))
+                EditorApplication.delayCall += ReimportEventsWithMissingClips;
             bool any = imported.Any(Relevant) || deleted.Any(Relevant) || moved.Any(Relevant) || movedFrom.Any(Relevant);
             if (!any) return;
             if (deleted.Any(Relevant) || moved.Any(Relevant)) SoddProjectFiles.ClearCache();

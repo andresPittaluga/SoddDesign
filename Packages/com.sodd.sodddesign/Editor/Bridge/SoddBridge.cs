@@ -66,18 +66,21 @@ namespace Sodd.Design.Editor
             Debug.Log("[SoddDesign] Copiado al portapapeles:\n" + EditorGUIUtility.systemCopyBuffer);
         }
 
-        public static void Start()
+        public static void Start() => Start(EditorPrefs.GetInt(PrefPort, DefaultPort));
+
+        /// <summary>Arranca en un puerto dado (0 = cualquiera libre; lo usan los tests).</summary>
+        public static void Start(int port)
         {
             if (s_running) return;
-            s_port = EditorPrefs.GetInt(PrefPort, DefaultPort);
             try
             {
-                s_listener = new TcpListener(IPAddress.Loopback, s_port);
+                s_listener = new TcpListener(IPAddress.Loopback, port);
                 s_listener.Start();
+                s_port = ((IPEndPoint)s_listener.LocalEndpoint).Port;
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[SoddDesign] No se pudo abrir el bridge en 127.0.0.1:{s_port} ({e.Message}). Cambiá el puerto con EditorPrefs '{PrefPort}'.");
+                Debug.LogWarning($"[SoddDesign] No se pudo abrir el bridge en 127.0.0.1:{port} ({e.Message}). Cambiá el puerto con EditorPrefs '{PrefPort}'.");
                 s_listener = null;
                 return;
             }

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.1.1] - 2026-11-24
+- Fix: en el primer import de un proyecto, los eventos que se importaban antes que sus AudioClips quedaban sin clips. Ahora se reimportan solos cuando llegan los audios.
+
 ## [0.1.0] - 2026-11-24
 Primera versión.
 - Runtime: eventos JSON (`*.sodd.json`) con importer + JSON Schema, timeline sample-accurate, loops con condición

@@ -15,6 +15,8 @@ MonoBehaviour:
   events:
   - {fileID: 8231267898222273385, guid: 8f69e4533ceaf1c4e9506311e0b619fe, type: 3}
   - {fileID: 8231267898222273385, guid: f3d643feace79ad4ab0355569f720b82, type: 3}
+  - {fileID: 8231267898222273385, guid: d78c60bc5bd3dcc469dbc9d5e0fbbca9, type: 3}
+  - {fileID: 8231267898222273385, guid: 5ba128702f72ab345b0ead8bad1dcbe9, type: 3}
   - {fileID: 8231267898222273385, guid: 71e580983ec6beb4c9693f1795eb1f47, type: 3}
   - {fileID: 8231267898222273385, guid: db17f340e7d69cc4d9b11c0d47968d42, type: 3}
   - {fileID: 8231267898222273385, guid: a8a6f563fe52c2044937cd5ef7d45bb4, type: 3}
