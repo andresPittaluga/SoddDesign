@@ -287,6 +287,16 @@ namespace Sodd.Design
             }
         }
 
+        /// <summary>Detiene inmediatamente todas las instancias de un evento (ej. al descargar un banco).</summary>
+        public void StopAllOf(SoddEventAsset asset)
+        {
+            for (int i = 0; i < _instances.Length; i++)
+            {
+                var s = _instances[i];
+                if (s.alive && s.asset == asset) { StopInternal(s, SoddStopMode.Immediate, true); if (s.released) Free(s); }
+            }
+        }
+
         public void SetPaused(bool paused) => _globalPaused = paused;
         public bool IsPaused => _globalPaused;
 

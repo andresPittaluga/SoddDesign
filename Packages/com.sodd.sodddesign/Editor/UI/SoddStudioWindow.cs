@@ -141,6 +141,7 @@ namespace Sodd.Design.Editor
                 ShowNotification(new GUIContent(r.ok ? $"✔ Eventos válidos ({r.warnings.Count} avisos)" : $"✖ {r.errors.Count} errores (ver consola)"));
                 if (!r.ok || r.warnings.Count > 0) Debug.Log("[SoddDesign] Validación:\n" + r);
             };
+            _root.Q<Button>("btn-optimize").clicked += SoddImportOptimizer.Run;
             _bridge.RegisterCallback<ClickEvent>(_ => { SoddStudioHooks.ToggleBridge?.Invoke(); UpdateBridge(); });
 
             // browser

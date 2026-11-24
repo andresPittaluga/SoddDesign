@@ -1,0 +1,16 @@
+{
+    "name": "Sodd.Design.Addressables",
+    "rootNamespace": "Sodd.Design",
+    "references": ["Sodd.Design.Runtime", "Unity.Addressables", "Unity.ResourceManager"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": ["SODD_ADDRESSABLES"],
+    "versionDefines": [
+        { "name": "com.unity.addressables", "expression": "1.0.0", "define": "SODD_ADDRESSABLES" }
+    ],
+    "noEngineReferences": false
+}

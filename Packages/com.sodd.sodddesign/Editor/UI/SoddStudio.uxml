@@ -14,6 +14,7 @@
             <ui:Button name="btn-mixer" text="Mixer" class="sd-btn" tooltip="Faders de buses, mute/solo y snapshots" />
             <ui:Button name="btn-profiler" text="Profiler" class="sd-btn" tooltip="Instancias y voces en vivo" />
             <ui:Button name="btn-validate" text="Validar" class="sd-btn" tooltip="Validar todos los eventos del proyecto" />
+            <ui:Button name="btn-optimize" text="Optimizar" class="sd-btn" tooltip="Optimizar import settings de los AudioClips según su uso (load type, compresión, mono)" />
             <ui:Label name="bridge-status" text="IA: off" class="sd-status" tooltip="Servidor local para la IA (MCP)" />
         </ui:VisualElement>
         <ui:VisualElement class="sd-main">

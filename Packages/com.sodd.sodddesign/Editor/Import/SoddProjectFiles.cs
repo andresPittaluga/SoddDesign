@@ -135,7 +135,14 @@ namespace Sodd.Design.Editor
                 reg = ScriptableObject.CreateInstance<SoddRegistry>();
                 AssetDatabase.CreateAsset(reg, path);
             }
-            var events = AllEventAssets().OrderBy(e => e.Path, StringComparer.Ordinal).ToArray();
+            // Los eventos de bancos con excludeFromRegistry no van a Resources (se cargan con el banco).
+            var banked = new HashSet<SoddEventAsset>();
+            foreach (var g in AssetDatabase.FindAssets("t:SoddBank"))
+            {
+                var b = AssetDatabase.LoadAssetAtPath<SoddBank>(AssetDatabase.GUIDToAssetPath(g));
+                if (b != null && b.excludeFromRegistry) foreach (var e in b.events) if (e != null) banked.Add(e);
+            }
+            var events = AllEventAssets().Where(e => !banked.Contains(e)).OrderBy(e => e.Path, StringComparer.Ordinal).ToArray();
             var pPath = ParametersPath; var sPath = SettingsPath;
             var pj = pPath != null ? AssetDatabase.LoadAssetAtPath<TextAsset>(pPath) : null;
             var sj = sPath != null ? AssetDatabase.LoadAssetAtPath<TextAsset>(sPath) : null;
@@ -161,7 +168,8 @@ namespace Sodd.Design.Editor
         static bool Relevant(string p) =>
             p.EndsWith(SoddProjectFiles.EventExt, StringComparison.OrdinalIgnoreCase) ||
             p.EndsWith(SoddProjectFiles.ParametersFile, StringComparison.OrdinalIgnoreCase) ||
-            p.EndsWith(SoddProjectFiles.SettingsFile, StringComparison.OrdinalIgnoreCase);
+            p.EndsWith(SoddProjectFiles.SettingsFile, StringComparison.OrdinalIgnoreCase) ||
+            (p.EndsWith(".asset", StringComparison.OrdinalIgnoreCase) && AssetDatabase.GetMainAssetTypeAtPath(p) == typeof(SoddBank));
 
         static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
         {
