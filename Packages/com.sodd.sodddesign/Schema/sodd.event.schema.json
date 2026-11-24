@@ -1,0 +1,725 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sodd.studio/schemas/sodd.event.schema.json",
+  "title": "SoddDesign Event",
+  "description": "Un evento de audio de SoddDesign (archivo *.sodd.json). Contiene tracks con regiones en un timeline, parámetros locales, loops y markers. Toda propiedad numérica modulable acepta un número o {base, modulators}.",
+  "type": "object",
+  "required": [
+    "id",
+    "path",
+    "tracks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Ruta a este schema (para autocompletado en editores)."
+    },
+    "id": {
+      "type": "string",
+      "description": "GUID único y estable del evento. No cambiar después de crearlo: las referencias del juego lo usan.",
+      "format": "uuid"
+    },
+    "path": {
+      "type": "string",
+      "description": "Ruta lógica legible, estilo carpetas: \"sfx/player/jump\". Se usa para buscar el evento desde código.",
+      "pattern": "^[A-Za-z0-9_\\-]+(/[A-Za-z0-9_\\-]+)*$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripción en lenguaje natural de cómo suena y cuándo se usa."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "Etiqueta."
+      },
+      "description": "Etiquetas libres para buscar/filtrar (ej. \"ui\", \"player\", \"loop\")."
+    },
+    "is3D": {
+      "type": "boolean",
+      "description": "Si es true el sonido se posiciona en el mundo (usa \"spatial\"). Si es false es 2D (UI, música)."
+    },
+    "spatial": {
+      "$ref": "#/$defs/spatial",
+      "description": "Ajustes de audio 3D (solo si is3D)."
+    },
+    "bus": {
+      "type": "string",
+      "description": "Bus lógico de salida: Master, Music, SFX, UI, Voice, Ambience o uno definido en sodd.settings.json.",
+      "default": "SFX"
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 256,
+      "default": 128,
+      "description": "Prioridad de voz: 0 = más importante (nunca se roba), 256 = menos importante."
+    },
+    "maxInstances": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Máximo de instancias sonando a la vez de este evento (0 = sin límite)."
+    },
+    "stealMode": {
+      "type": "string",
+      "description": "Qué hacer al superar maxInstances: Oldest (corta la más vieja), Quietest (corta la más baja), None (no arranca la nueva).",
+      "enum": [
+        "Oldest",
+        "Quietest",
+        "None"
+      ],
+      "default": "Oldest"
+    },
+    "cooldown": {
+      "type": "number",
+      "description": "Segundos mínimos entre dos disparos del evento (anti-spam).",
+      "minimum": 0,
+      "default": 0
+    },
+    "networkMode": {
+      "type": "string",
+      "description": "Red (NGO): Local = no se envía; Broadcast = suena en todos los clientes; OwnerOnly = solo el dueño.",
+      "enum": [
+        "Local",
+        "Broadcast",
+        "OwnerOnly"
+      ],
+      "default": "Local"
+    },
+    "volume": {
+      "$ref": "#/$defs/modProp",
+      "description": "Volumen maestro del evento en dB (0 = original, -6 = mitad de amplitud)."
+    },
+    "pitch": {
+      "$ref": "#/$defs/modProp",
+      "description": "Pitch maestro del evento en semitonos (12 = una octava arriba, -12 = abajo)."
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/parameter",
+        "description": "Parámetro local."
+      },
+      "description": "Parámetros locales de cada instancia (ej. \"Speed\" de un motor). Los globales van en sodd.parameters.json."
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/track",
+        "description": "Track."
+      },
+      "description": "Pistas del timeline. Todas suenan en paralelo."
+    },
+    "loopRegions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/loopRegion",
+        "description": "Región de loop."
+      },
+      "description": "Regiones de loop del timeline. Cuando el cursor llega al final vuelve al inicio, salvo que se cumpla exitWhen."
+    },
+    "markers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/marker",
+        "description": "Marker."
+      },
+      "description": "Marcas con nombre en el timeline; disparan el callback OnMarker en el juego."
+    }
+  },
+  "$defs": {
+    "curve": {
+      "type": "array",
+      "description": "Curva lineal por tramos: lista de puntos [x, y] ordenados por x. Fuera del rango se mantiene el extremo.",
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "number",
+            "description": "x (ej. valor del parámetro)"
+          },
+          {
+            "type": "number",
+            "description": "y (valor resultante)"
+          }
+        ],
+        "minItems": 2,
+        "maxItems": 2,
+        "description": "Punto [x, y]."
+      }
+    },
+    "modulator": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Modulador que se suma al valor base de una propiedad.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Random: valor aleatorio entre min y max. ParameterCurve: valor según curva(parámetro). RandomScaledByParameter: aleatorio ±range escalado por curva(parámetro). LFO: oscilador. Envelope: attack/hold/release desde el inicio. ADSR: envolvente con release al detener.",
+          "enum": [
+            "Random",
+            "ParameterCurve",
+            "RandomScaledByParameter",
+            "LFO",
+            "Envelope",
+            "ADSR"
+          ]
+        },
+        "min": {
+          "type": "number",
+          "description": "Mínimo (Random / RandomScaledByParameter)."
+        },
+        "max": {
+          "type": "number",
+          "description": "Máximo (Random / RandomScaledByParameter)."
+        },
+        "range": {
+          "type": "number",
+          "description": "Atajo: equivale a min = -range, max = +range."
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unidad de min/max: Auto (la de la propiedad), dB, Semitones o Linear (ratio; 0.5 = mitad).",
+          "enum": [
+            "Auto",
+            "Linear",
+            "dB",
+            "Semitones"
+          ],
+          "default": "Auto"
+        },
+        "perTrigger": {
+          "type": "boolean",
+          "description": "true: nuevo valor aleatorio en cada disparo de región; false: uno solo por instancia."
+        },
+        "parameter": {
+          "type": "string",
+          "description": "Nombre del parámetro (local del evento o global de sodd.parameters.json). En LFO multiplica el rate (sync)."
+        },
+        "curve": {
+          "$ref": "#/$defs/curve",
+          "description": "Curva parámetro → valor (ParameterCurve) o parámetro → escala 0..1 (RandomScaledByParameter)."
+        },
+        "shape": {
+          "type": "string",
+          "description": "Forma del LFO.",
+          "enum": [
+            "Sine",
+            "Triangle",
+            "Square",
+            "SawUp",
+            "SawDown",
+            "Random"
+          ],
+          "default": "Sine"
+        },
+        "rate": {
+          "type": "number",
+          "description": "Frecuencia del LFO en Hz.",
+          "minimum": 0,
+          "default": 1
+        },
+        "depth": {
+          "type": "number",
+          "description": "Profundidad del LFO/Envelope en unidades de la propiedad (dB, semitonos...).",
+          "default": 1
+        },
+        "phase": {
+          "type": "number",
+          "description": "Fase inicial del LFO (0..1).",
+          "default": 0
+        },
+        "attack": {
+          "type": "number",
+          "description": "Ataque en segundos.",
+          "minimum": 0
+        },
+        "hold": {
+          "type": "number",
+          "description": "Hold en segundos (Envelope).",
+          "minimum": 0
+        },
+        "decay": {
+          "type": "number",
+          "description": "Decay en segundos (ADSR).",
+          "minimum": 0
+        },
+        "sustain": {
+          "type": "number",
+          "description": "Nivel de sustain 0..1 (ADSR).",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "release": {
+          "type": "number",
+          "description": "Release en segundos. En ADSR sobre volume define el fade-out al detener.",
+          "minimum": 0
+        }
+      }
+    },
+    "modProp": {
+      "description": "Propiedad modulable: un número, o { \"base\": x, \"modulators\": [...] }.",
+      "oneOf": [
+        {
+          "type": "number",
+          "description": "Valor fijo."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Valor base + moduladores.",
+          "properties": {
+            "base": {
+              "type": "number",
+              "description": "Valor base."
+            },
+            "modulators": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/modulator",
+                "description": "Modulador."
+              },
+              "description": "Moduladores que se suman al base."
+            }
+          }
+        }
+      ]
+    },
+    "spatial": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Audio 3D.",
+      "properties": {
+        "spatialBlend": {
+          "type": "number",
+          "description": "0 = 2D, 1 = 3D completo.",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1
+        },
+        "minDistance": {
+          "type": "number",
+          "description": "Distancia (m) hasta la que suena a volumen completo.",
+          "minimum": 0,
+          "default": 1
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "Distancia (m) a partir de la cual deja de atenuar/no se oye.",
+          "minimum": 0,
+          "default": 50
+        },
+        "rolloff": {
+          "type": "string",
+          "description": "Curva de atenuación por distancia.",
+          "enum": [
+            "Logarithmic",
+            "Linear",
+            "Custom"
+          ],
+          "default": "Logarithmic"
+        },
+        "customRolloff": {
+          "$ref": "#/$defs/curve",
+          "description": "Curva distancia(m) → volumen 0..1 para rolloff Custom."
+        },
+        "doppler": {
+          "type": "number",
+          "description": "Efecto Doppler (0 = ninguno).",
+          "minimum": 0,
+          "maximum": 5,
+          "default": 1
+        },
+        "spread": {
+          "type": "number",
+          "description": "Apertura estéreo en grados (0 = puntual, 360 = envolvente).",
+          "minimum": 0,
+          "maximum": 360,
+          "default": 0
+        }
+      }
+    },
+    "parameter": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "description": "Definición de parámetro.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nombre del parámetro (ej. \"Speed\")."
+        },
+        "description": {
+          "type": "string",
+          "description": "Qué representa, en lenguaje natural."
+        },
+        "min": {
+          "type": "number",
+          "description": "Valor mínimo.",
+          "default": 0
+        },
+        "max": {
+          "type": "number",
+          "description": "Valor máximo.",
+          "default": 1
+        },
+        "default": {
+          "type": "number",
+          "description": "Valor inicial."
+        },
+        "seekSpeed": {
+          "type": "number",
+          "description": "Unidades por segundo con que el valor persigue al objetivo (0 = instantáneo). Suaviza saltos.",
+          "minimum": 0,
+          "default": 0
+        },
+        "scope": {
+          "type": "string",
+          "description": "local (por instancia) o global (uno para todo el juego).",
+          "enum": [
+            "local",
+            "global"
+          ]
+        }
+      }
+    },
+    "clip": {
+      "description": "Referencia a un AudioClip: GUID del asset (estable) + path legible (para humanos/IA). Puede ser solo un path string.",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Path del AudioClip (ej. \"Assets/Audio/jump.wav\")."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Clip con GUID.",
+          "properties": {
+            "guid": {
+              "type": "string",
+              "description": "GUID del asset de Unity (del .meta)."
+            },
+            "path": {
+              "type": "string",
+              "description": "Path del asset (legible)."
+            },
+            "weight": {
+              "type": "number",
+              "description": "Peso relativo para RandomClip.",
+              "minimum": 0,
+              "default": 1
+            }
+          }
+        }
+      ]
+    },
+    "instrument": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Qué suena dentro de la región.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "SingleClip: un clip. RandomClip: uno al azar (con pesos). Sequential: en orden. Silence: nada. NestedEvent: otro evento.",
+          "enum": [
+            "SingleClip",
+            "RandomClip",
+            "Sequential",
+            "Silence",
+            "NestedEvent"
+          ]
+        },
+        "clip": {
+          "$ref": "#/$defs/clip",
+          "description": "Clip único (atajo para SingleClip)."
+        },
+        "clips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clip",
+            "description": "Clip."
+          },
+          "description": "Lista de clips."
+        },
+        "avoidRepeat": {
+          "type": "boolean",
+          "description": "RandomClip: no repetir el último clip elegido (\"que no se repita\")."
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "El clip se repite dentro de la región hasta que termina la región."
+        },
+        "nestedEvent": {
+          "type": "string",
+          "description": "NestedEvent: id o path del evento a disparar."
+        },
+        "volume": {
+          "$ref": "#/$defs/modProp",
+          "description": "Volumen del instrumento en dB."
+        },
+        "pitch": {
+          "$ref": "#/$defs/modProp",
+          "description": "Pitch del instrumento en semitonos."
+        },
+        "startOffset": {
+          "$ref": "#/$defs/modProp",
+          "description": "Segundos a saltear del inicio del clip (útil con Random para variar)."
+        }
+      }
+    },
+    "region": {
+      "type": "object",
+      "required": [
+        "start",
+        "length",
+        "instrument"
+      ],
+      "additionalProperties": false,
+      "description": "Bloque en el timeline de un track.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nombre opcional."
+        },
+        "start": {
+          "type": "number",
+          "description": "Inicio en segundos desde el comienzo del evento.",
+          "minimum": 0
+        },
+        "length": {
+          "type": "number",
+          "description": "Duración en segundos.",
+          "exclusiveMinimum": 0
+        },
+        "fadeIn": {
+          "type": "number",
+          "description": "Fade-in en segundos.",
+          "minimum": 0
+        },
+        "fadeOut": {
+          "type": "number",
+          "description": "Fade-out en segundos.",
+          "minimum": 0
+        },
+        "fadeInCurve": {
+          "type": "string",
+          "description": "Forma del fade-in.",
+          "enum": [
+            "Linear",
+            "EqualPower",
+            "Exponential",
+            "SCurve"
+          ]
+        },
+        "fadeOutCurve": {
+          "type": "string",
+          "description": "Forma del fade-out.",
+          "enum": [
+            "Linear",
+            "EqualPower",
+            "Exponential",
+            "SCurve"
+          ]
+        },
+        "instrument": {
+          "$ref": "#/$defs/instrument",
+          "description": "Instrumento de la región."
+        }
+      }
+    },
+    "effect": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "description": "Efecto del track (ver catálogo en AI_GUIDE.md).",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Tipo de efecto.",
+          "enum": [
+            "LowPass",
+            "HighPass",
+            "Echo",
+            "Reverb",
+            "Distortion",
+            "Chorus",
+            "Bitcrusher",
+            "Tremolo",
+            "AutoPan",
+            "RingMod",
+            "Saturator",
+            "SimpleDelay",
+            "SimpleCompressor"
+          ]
+        },
+        "bypass": {
+          "type": "boolean",
+          "description": "Desactiva el efecto sin borrarlo."
+        },
+        "params": {
+          "type": "object",
+          "description": "Parámetros del efecto (cada uno modulable). Ej. LowPass: {\"cutoff\": 800}.",
+          "additionalProperties": {
+            "$ref": "#/$defs/modProp",
+            "description": "Valor del parámetro."
+          }
+        }
+      }
+    },
+    "track": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Pista del timeline.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nombre de la pista."
+        },
+        "type": {
+          "type": "string",
+          "description": "Tipo (define el color en el Studio).",
+          "enum": [
+            "SFX",
+            "Music",
+            "Voice",
+            "Ambience"
+          ]
+        },
+        "volume": {
+          "$ref": "#/$defs/modProp",
+          "description": "Volumen de la pista en dB."
+        },
+        "pan": {
+          "$ref": "#/$defs/modProp",
+          "description": "Paneo -1 (izquierda) a 1 (derecha). Solo 2D."
+        },
+        "reverbSend": {
+          "$ref": "#/$defs/modProp",
+          "description": "Envío a reverb (-1..0; 0 = máximo, -1 = nada)."
+        },
+        "mute": {
+          "type": "boolean",
+          "description": "Silenciar la pista."
+        },
+        "solo": {
+          "type": "boolean",
+          "description": "Solo esta pista (y otras en solo)."
+        },
+        "bus": {
+          "type": "string",
+          "description": "Bus propio de la pista (por defecto el del evento)."
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/effect",
+            "description": "Efecto."
+          },
+          "description": "Cadena de efectos en orden."
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/region",
+            "description": "Región."
+          },
+          "description": "Regiones (instrumentos) en el timeline."
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "required": [
+        "parameter",
+        "op",
+        "value"
+      ],
+      "additionalProperties": false,
+      "description": "Condición sobre un parámetro.",
+      "properties": {
+        "parameter": {
+          "type": "string",
+          "description": "Nombre del parámetro."
+        },
+        "op": {
+          "type": "string",
+          "description": "Comparación.",
+          "enum": [
+            "Greater",
+            "GreaterOrEqual",
+            "Less",
+            "LessOrEqual",
+            "Equal",
+            "NotEqual"
+          ]
+        },
+        "value": {
+          "type": "number",
+          "description": "Valor a comparar."
+        }
+      }
+    },
+    "loopRegion": {
+      "type": "object",
+      "required": [
+        "start",
+        "end"
+      ],
+      "additionalProperties": false,
+      "description": "Loop del timeline.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nombre del loop."
+        },
+        "start": {
+          "type": "number",
+          "description": "Inicio del loop (s).",
+          "minimum": 0
+        },
+        "end": {
+          "type": "number",
+          "description": "Fin del loop (s).",
+          "minimum": 0
+        },
+        "exitWhen": {
+          "$ref": "#/$defs/condition",
+          "description": "Si se cumple al llegar al final, se sale del loop (ej. Intensity > 0.9)."
+        }
+      }
+    },
+    "marker": {
+      "type": "object",
+      "required": [
+        "name",
+        "time"
+      ],
+      "additionalProperties": false,
+      "description": "Marker con nombre.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nombre (llega al callback OnMarker)."
+        },
+        "time": {
+          "type": "number",
+          "description": "Tiempo en segundos.",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

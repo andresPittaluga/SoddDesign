@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../Packages/com.sodd.sodddesign/Schema/sodd.event.schema.json",
+  "id": "5b0e7d9a-3c1f-4c55-9a51-0f1e2a3b4c03",
+  "path": "sfx/player/jump",
+  "description": "Salto. Con menos vida el pitch se vuelve más inestable (RandomScaledByParameter sobre Health).",
+  "tags": [
+    "player"
+  ],
+  "is3D": true,
+  "spatial": {
+    "minDistance": 1,
+    "maxDistance": 30
+  },
+  "cooldown": 0.05,
+  "networkMode": "Broadcast",
+  "pitch": {
+    "base": 0,
+    "modulators": [
+      {
+        "type": "RandomScaledByParameter",
+        "parameter": "Health",
+        "range": 5,
+        "unit": "Semitones",
+        "curve": [
+          [
+            0,
+            1
+          ],
+          [
+            50,
+            0.4
+          ],
+          [
+            100,
+            0
+          ]
+        ]
+      }
+    ]
+  },
+  "tracks": [
+    {
+      "name": "Whoosh",
+      "type": "SFX",
+      "regions": [
+        {
+          "start": 0,
+          "length": 0.4,
+          "fadeOut": 0.15,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "c61fa52d03f87234f8205e7442891061",
+              "path": "Assets/Sandbox/Audio/sweep_up.wav"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Thump",
+      "type": "SFX",
+      "volume": -6,
+      "regions": [
+        {
+          "start": 0,
+          "length": 0.3,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "0a35acb16db887144a75ac2e06ef2a3a",
+              "path": "Assets/Sandbox/Audio/kick.wav"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

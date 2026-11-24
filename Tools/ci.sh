@@ -15,7 +15,9 @@ done
 run() {
   local plat="$1"; local log="$ROOT/_ci/log-$plat.txt"; local res="$ROOT/_ci/results-$plat.xml"
   rm -f "$res"
-  if [ "$plat" = compile ]; then
+  if [ "$plat" = exec ]; then
+    "$UNITY" -batchmode -nographics -projectPath "$WMIR" -quit -executeMethod "$EXEC_METHOD" -logFile "$(cygpath -w "$log")" > /dev/null 2>&1
+  elif [ "$plat" = compile ]; then
     "$UNITY" -batchmode -nographics -projectPath "$WMIR" -quit -logFile "$(cygpath -w "$log")" > /dev/null 2>&1
   else
     "$UNITY" -batchmode -nographics -projectPath "$WMIR" -runTests -testPlatform "$plat" \
@@ -27,7 +29,7 @@ run() {
   grep -E "^(\[SoddDesign\]|SoddDesign)" "$log" | sort -u | head -20
   if [ -f "$res" ]; then
     grep -o '<test-run[^>]*>' "$res" | grep -oE '(total|passed|failed|skipped)="[0-9]+"' | tr '\n' ' '; echo
-    python - "$res" <<'PY'
+    PYTHONIOENCODING=utf-8 python - "$res" <<'PY'
 import sys, xml.etree.ElementTree as ET
 t = ET.parse(sys.argv[1])
 for c in t.iter('test-case'):
@@ -39,12 +41,19 @@ PY
     echo "(sin results: ver $log)"; grep -iE "error|exception" "$log" | grep -v "^UnityEngine\|Licens" | head -20
   fi
 }
+EXEC_METHOD="${2:-}"
 case "$MODE" in
   both) run EditMode; run PlayMode ;;
   *) run "$MODE" ;;
 esac
-# Traer de vuelta los .meta nuevos que generó Unity en el espejo (solo los que faltan en el original)
+# Traer de vuelta los archivos nuevos que generó Unity en el espejo (.meta, registro, escenas generadas
+# por -executeMethod). Solo los que faltan en el original; un .meta solo si su archivo existe en el original.
 cd "$MIRROR"
-find Assets Packages -name "*.meta" | while read -r m; do
-  [ -f "$ROOT/$m" ] || { src="${m%.meta}"; [ -e "$ROOT/$src" ] && cp "$m" "$ROOT/$m"; }
-done
+for pass in 1 2; do find Assets Packages -type f | sort | while read -r m; do
+  [ -f "$ROOT/$m" ] && continue
+  case "$m" in
+    *.meta) src="${m%.meta}"; [ -e "$ROOT/$src" ] || continue ;;
+    *) [ "$MODE" = exec ] || [ "$m" = "Assets/SoddDesign/Resources/SoddRegistry.asset" ] || continue ;;
+  esac
+  mkdir -p "$(dirname "$ROOT/$m")"; cp "$m" "$ROOT/$m"
+done; done

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: SoddRegistry
+  m_EditorClassIdentifier: Sodd.Design.Runtime:Sodd.Design:SoddRegistry
+  events:
+  - {fileID: 8231267898222273385, guid: 8f69e4533ceaf1c4e9506311e0b619fe, type: 3}
+  - {fileID: 8231267898222273385, guid: f3d643feace79ad4ab0355569f720b82, type: 3}
+  - {fileID: 8231267898222273385, guid: 71e580983ec6beb4c9693f1795eb1f47, type: 3}
+  - {fileID: 8231267898222273385, guid: db17f340e7d69cc4d9b11c0d47968d42, type: 3}
+  - {fileID: 8231267898222273385, guid: a8a6f563fe52c2044937cd5ef7d45bb4, type: 3}
+  - {fileID: 8231267898222273385, guid: f37bebe1db4699248845d7f9d9f4ca61, type: 3}
+  parametersJson: {fileID: 4900000, guid: dff4f507ac0a3ea48a2cf6790fc9b84a, type: 3}
+  settingsJson: {fileID: 4900000, guid: a009e3954be19e74c89bc1fcb6f448f6, type: 3}

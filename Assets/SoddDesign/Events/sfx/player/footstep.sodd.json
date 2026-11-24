@@ -1,0 +1,75 @@
+{
+  "$schema": "../../../../../Packages/com.sodd.sodddesign/Schema/sodd.event.schema.json",
+  "id": "5b0e7d9a-3c1f-4c55-9a51-0f1e2a3b4c02",
+  "path": "sfx/player/footstep",
+  "description": "Paso del jugador. 4 variaciones sin repetir, con pitch y volumen aleatorios.",
+  "tags": [
+    "player",
+    "foley"
+  ],
+  "is3D": true,
+  "spatial": {
+    "minDistance": 1,
+    "maxDistance": 25,
+    "rolloff": "Logarithmic"
+  },
+  "bus": "SFX",
+  "maxInstances": 4,
+  "stealMode": "Oldest",
+  "volume": {
+    "base": -2,
+    "modulators": [
+      {
+        "type": "Random",
+        "min": -3,
+        "max": 0,
+        "unit": "dB"
+      }
+    ]
+  },
+  "tracks": [
+    {
+      "name": "Steps",
+      "type": "SFX",
+      "regions": [
+        {
+          "start": 0,
+          "length": 0.25,
+          "instrument": {
+            "type": "RandomClip",
+            "avoidRepeat": true,
+            "clips": [
+              {
+                "guid": "1ad51caab6a21c4438da0bf6fd94fde4",
+                "path": "Assets/Sandbox/Audio/footstep_01.wav"
+              },
+              {
+                "guid": "70bb397e27a3b6e4cbf1c38ebda0e32a",
+                "path": "Assets/Sandbox/Audio/footstep_02.wav"
+              },
+              {
+                "guid": "b24b1669940b8c74a9bf98df661e999e",
+                "path": "Assets/Sandbox/Audio/footstep_03.wav"
+              },
+              {
+                "guid": "b641022d268c8734086344aa0743d9f8",
+                "path": "Assets/Sandbox/Audio/footstep_04.wav"
+              }
+            ],
+            "pitch": {
+              "base": 0,
+              "modulators": [
+                {
+                  "type": "Random",
+                  "min": -1.5,
+                  "max": 1.5,
+                  "unit": "Semitones"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

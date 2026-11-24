@@ -1,0 +1,99 @@
+{
+  "$schema": "../../../../../Packages/com.sodd.sodddesign/Schema/sodd.event.schema.json",
+  "id": "5b0e7d9a-3c1f-4c55-9a51-0f1e2a3b4c05",
+  "path": "sfx/impacts/hit",
+  "description": "Golpe en capas: kick (grave) + snare (cuerpo) + ruido (transiente).",
+  "tags": [
+    "impact",
+    "combat"
+  ],
+  "is3D": true,
+  "spatial": {
+    "minDistance": 2,
+    "maxDistance": 40,
+    "rolloff": "Custom",
+    "customRolloff": [
+      [
+        0,
+        1
+      ],
+      [
+        10,
+        0.5
+      ],
+      [
+        40,
+        0
+      ]
+    ]
+  },
+  "maxInstances": 6,
+  "stealMode": "Quietest",
+  "tracks": [
+    {
+      "name": "Low",
+      "type": "SFX",
+      "regions": [
+        {
+          "start": 0,
+          "length": 0.5,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "0a35acb16db887144a75ac2e06ef2a3a",
+              "path": "Assets/Sandbox/Audio/kick.wav"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Body",
+      "type": "SFX",
+      "volume": -3,
+      "regions": [
+        {
+          "start": 0,
+          "length": 0.3,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "f079838fc954d8b47a90fd1f1d027e6b",
+              "path": "Assets/Sandbox/Audio/snare.wav"
+            },
+            "pitch": {
+              "base": 0,
+              "modulators": [
+                {
+                  "type": "Random",
+                  "min": -2,
+                  "max": 2,
+                  "unit": "Semitones"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transient",
+      "type": "SFX",
+      "volume": -10,
+      "regions": [
+        {
+          "start": 0,
+          "length": 0.08,
+          "fadeOut": 0.06,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "5d9687a062873c24c9593c22a5069642",
+              "path": "Assets/Sandbox/Audio/noise_burst.wav"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

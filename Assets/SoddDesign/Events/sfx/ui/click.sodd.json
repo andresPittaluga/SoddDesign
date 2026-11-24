@@ -1,0 +1,40 @@
+{
+  "$schema": "../../../../../Packages/com.sodd.sodddesign/Schema/sodd.event.schema.json",
+  "id": "5b0e7d9a-3c1f-4c55-9a51-0f1e2a3b4c01",
+  "path": "sfx/ui/click",
+  "description": "Click de botón de UI, seco y corto.",
+  "tags": [
+    "ui"
+  ],
+  "bus": "UI",
+  "tracks": [
+    {
+      "name": "Click",
+      "type": "SFX",
+      "regions": [
+        {
+          "start": 0,
+          "length": 0.1,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "db9094ca3fce0d848b91064251408591",
+              "path": "Assets/Sandbox/Audio/ui_click.wav"
+            },
+            "pitch": {
+              "base": 0,
+              "modulators": [
+                {
+                  "type": "Random",
+                  "min": -0.5,
+                  "max": 0.5,
+                  "unit": "Semitones"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

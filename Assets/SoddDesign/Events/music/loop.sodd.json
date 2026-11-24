@@ -1,0 +1,108 @@
+{
+  "$schema": "../../../../Packages/com.sodd.sodddesign/Schema/sodd.event.schema.json",
+  "id": "5b0e7d9a-3c1f-4c55-9a51-0f1e2a3b4c04",
+  "path": "music/loop",
+  "description": "Loop musical de 2 compases a 120 BPM. Sale del loop cuando Intensity > 0.9 y toca el final. La capa de drone sube con Intensity.",
+  "tags": [
+    "music"
+  ],
+  "bus": "Music",
+  "priority": 0,
+  "maxInstances": 1,
+  "tracks": [
+    {
+      "name": "Groove",
+      "type": "Music",
+      "regions": [
+        {
+          "name": "Loop A",
+          "start": 0,
+          "length": 4,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "9fc0025e037e7244a9b4ed86bcf33e26",
+              "path": "Assets/Sandbox/Audio/music_loop_120bpm.wav"
+            }
+          }
+        },
+        {
+          "name": "Outro",
+          "start": 4,
+          "length": 0.5,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "0a35acb16db887144a75ac2e06ef2a3a",
+              "path": "Assets/Sandbox/Audio/kick.wav"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Drone",
+      "type": "Music",
+      "volume": {
+        "base": 0,
+        "modulators": [
+          {
+            "type": "ParameterCurve",
+            "parameter": "Intensity",
+            "curve": [
+              [
+                0,
+                -40
+              ],
+              [
+                0.5,
+                -12
+              ],
+              [
+                1,
+                -4
+              ]
+            ]
+          }
+        ]
+      },
+      "regions": [
+        {
+          "start": 0,
+          "length": 4,
+          "fadeIn": 0.05,
+          "fadeOut": 0.05,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "1ba8103d01fc48344904d595ba2a44c8",
+              "path": "Assets/Sandbox/Audio/drone_110.wav"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "loopRegions": [
+    {
+      "name": "Main",
+      "start": 0,
+      "end": 4,
+      "exitWhen": {
+        "parameter": "Intensity",
+        "op": "Greater",
+        "value": 0.9
+      }
+    }
+  ],
+  "markers": [
+    {
+      "name": "Bar1",
+      "time": 0
+    },
+    {
+      "name": "Bar2",
+      "time": 2
+    }
+  ]
+}

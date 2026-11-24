@@ -1,0 +1,65 @@
+{
+  "maxVoices": 32,
+  "maxInstances": 128,
+  "lookaheadMs": 100,
+  "buses": [
+    {
+      "name": "Master"
+    },
+    {
+      "name": "Music",
+      "parent": "Master"
+    },
+    {
+      "name": "SFX",
+      "parent": "Master"
+    },
+    {
+      "name": "UI",
+      "parent": "Master"
+    },
+    {
+      "name": "Voice",
+      "parent": "Master"
+    },
+    {
+      "name": "Ambience",
+      "parent": "Master"
+    }
+  ],
+  "snapshots": [
+    {
+      "name": "Underwater",
+      "description": "Bajo el agua: todo apagado (lowpass fuerte), música más baja.",
+      "buses": {
+        "SFX": {
+          "lowpass": 600,
+          "volume": -3
+        },
+        "Ambience": {
+          "lowpass": 500
+        },
+        "Music": {
+          "lowpass": 900,
+          "volume": -6
+        }
+      }
+    },
+    {
+      "name": "Pause",
+      "description": "Menú de pausa: baja SFX y ambiente, la música queda filtrada.",
+      "buses": {
+        "SFX": {
+          "volume": -20
+        },
+        "Ambience": {
+          "volume": -20
+        },
+        "Music": {
+          "volume": -8,
+          "lowpass": 2500
+        }
+      }
+    }
+  ]
+}

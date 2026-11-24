@@ -1,0 +1,95 @@
+using System;
+using UnityEngine;
+
+namespace Sodd.Design
+{
+    /// <summary>
+    /// Handle a una instancia de evento. Es un struct con generación: después de Release (o cuando la
+    /// instancia se recicla) todas las llamadas son no-ops seguras e IsValid devuelve false.
+    /// </summary>
+    public readonly struct SoddEventInstance : IEquatable<SoddEventInstance>
+    {
+        readonly SoddEngine _engine;
+        readonly int _index;
+        readonly int _gen;
+
+        internal SoddEventInstance(SoddEngine engine, int index, int gen) { _engine = engine; _index = index; _gen = gen; }
+
+        internal SoddInstance State => _engine?.Get(_index, _gen);
+        public SoddEngine Engine => _engine;
+
+        public bool IsValid => State != null;
+        public SoddEventAsset Asset => State?.asset;
+        public string Path => State?.ev?.path;
+
+        /// <summary>True mientras suena (incluye el fade-out de Stop).</summary>
+        public bool IsPlaying
+        {
+            get { var s = State; return s != null && (s.state == SoddInstanceState.Playing || s.state == SoddInstanceState.Stopping); }
+        }
+
+        public bool IsStopping { get { var s = State; return s != null && s.state == SoddInstanceState.Stopping; } }
+
+        /// <summary>Posición actual en el timeline del evento (segundos).</summary>
+        public float TimelinePosition { get { var s = State; return s != null ? _engine.TimelinePosition(s) : 0f; } }
+
+        public void Start() { var s = State; if (s != null) _engine.Start(s); }
+
+        /// <summary>Arranca en un dspTime exacto (sample-accurate).</summary>
+        public void StartAt(double dspTime) { var s = State; if (s != null) _engine.StartAt(s, dspTime); }
+
+        public void Stop(SoddStopMode mode = SoddStopMode.AllowFadeOut) { var s = State; if (s != null) _engine.Stop(s, mode); }
+
+        /// <summary>Libera la instancia: se recicla cuando termine de sonar. El handle queda inválido.</summary>
+        public void Release() { var s = State; if (s != null) _engine.Release(s); }
+
+        public bool SetParameter(string name, float value, bool immediate = false) { var s = State; return s != null && _engine.SetLocal(s, name, value, immediate); }
+        public bool SetParameter(int localIndex, float value, bool immediate = false) { var s = State; return s != null && _engine.SetLocal(s, localIndex, value, immediate); }
+        public float GetParameter(string name) { var s = State; return s != null ? _engine.GetLocal(s, name) : 0f; }
+
+        public void Set3DPosition(Vector3 p) { var s = State; if (s != null) { s.position = p; s.hasAttach = false; } }
+        public Vector3 Position => State?.position ?? Vector3.zero;
+
+        public void AttachTo(Transform t)
+        {
+            var s = State;
+            if (s == null) return;
+            s.attach = t; s.hasAttach = t != null;
+            if (t != null) s.position = t.position;
+        }
+
+        public void SetPaused(bool paused) { var s = State; if (s != null) s.userPaused = paused; }
+
+        /// <summary>Multiplicador de volumen lineal extra (0..1+), útil para mezclas desde código.</summary>
+        public float Volume
+        {
+            get => State?.volumeScale ?? 0f;
+            set { var s = State; if (s != null) s.volumeScale = Mathf.Max(0f, value); }
+        }
+
+        public event Action<SoddEventInstance, string> OnMarker
+        {
+            add { var s = State; if (s != null) s.onMarker += value; }
+            remove { var s = State; if (s != null) s.onMarker -= value; }
+        }
+
+        public event Action<SoddEventInstance> OnStopped
+        {
+            add { var s = State; if (s != null) s.onStopped += value; }
+            remove { var s = State; if (s != null) s.onStopped -= value; }
+        }
+
+        public event Action<SoddEventInstance, string> OnLoopExit
+        {
+            add { var s = State; if (s != null) s.onLoopExit += value; }
+            remove { var s = State; if (s != null) s.onLoopExit -= value; }
+        }
+
+        public bool Equals(SoddEventInstance o) => ReferenceEquals(_engine, o._engine) && _index == o._index && _gen == o._gen;
+        public override bool Equals(object obj) => obj is SoddEventInstance o && Equals(o);
+        public override int GetHashCode() => (_index * 397) ^ _gen;
+        public static bool operator ==(SoddEventInstance a, SoddEventInstance b) => a.Equals(b);
+        public static bool operator !=(SoddEventInstance a, SoddEventInstance b) => !a.Equals(b);
+        public override string ToString() => IsValid ? $"SoddEventInstance({Path}#{_index}.{_gen})" : "SoddEventInstance(invalid)";
+    }
+}

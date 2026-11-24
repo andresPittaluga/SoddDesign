@@ -1,0 +1,71 @@
+{
+  "$schema": "../../../../Packages/com.sodd.sodddesign/Schema/sodd.event.schema.json",
+  "id": "5b0e7d9a-3c1f-4c55-9a51-0f1e2a3b4c06",
+  "path": "ambience/drone",
+  "description": "Drone ambiental en loop que 'respira' (LFO lento en volumen y pitch).",
+  "tags": [
+    "ambience",
+    "loop"
+  ],
+  "is3D": true,
+  "spatial": {
+    "minDistance": 3,
+    "maxDistance": 30
+  },
+  "bus": "Ambience",
+  "volume": {
+    "base": -6,
+    "modulators": [
+      {
+        "type": "LFO",
+        "shape": "Sine",
+        "rate": 0.25,
+        "depth": 4
+      },
+      {
+        "type": "ADSR",
+        "attack": 1.5,
+        "sustain": 1,
+        "release": 2
+      }
+    ]
+  },
+  "pitch": {
+    "base": 0,
+    "modulators": [
+      {
+        "type": "LFO",
+        "shape": "Triangle",
+        "rate": 0.1,
+        "depth": 0.3
+      }
+    ]
+  },
+  "tracks": [
+    {
+      "name": "Drone",
+      "type": "Ambience",
+      "regions": [
+        {
+          "start": 0,
+          "length": 4,
+          "instrument": {
+            "type": "SingleClip",
+            "loop": true,
+            "clip": {
+              "guid": "1ba8103d01fc48344904d595ba2a44c8",
+              "path": "Assets/Sandbox/Audio/drone_110.wav"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "loopRegions": [
+    {
+      "name": "Forever",
+      "start": 0,
+      "end": 4
+    }
+  ]
+}
