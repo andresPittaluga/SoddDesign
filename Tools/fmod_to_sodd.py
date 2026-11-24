@@ -215,22 +215,46 @@ def convert(objs, ev, fmod_root, unity_root, warn):
             if clip is None: return None
             ins = {'type': 'SingleClip', 'clip': clip}
         elif cls == 'MultiSound':
+            # A playlist that only wraps another playlist plays the inner one: unwrap it and keep both levels' props.
+            layers = [mo]
+            while True:
+                inner = [objs.get(s) for s in R(layers[-1], 'sounds')]
+                if len(inner) == 1 and inner[0] is not None and inner[0].get('class') == 'MultiSound': layers.append(inner[0])
+                else: break
+            playlist = layers[-1]
             clips, flen = [], 0
-            for s in R(mo, 'sounds'):
-                c, l = clip_of((R(objs.get(s), 'audioFile') or [None])[0])
-                if c: clips.append(c); flen = max(flen, l)
+            def gather(o):
+                nonlocal flen
+                for s in R(o, 'sounds'):
+                    so = objs.get(s)
+                    if so is None: continue
+                    if so.get('class') == 'MultiSound':
+                        warn(f'{path}: playlist anidada junto a otros sonidos, se aplanan sus clips')
+                        gather(so); continue
+                    c, l = clip_of((R(so, 'audioFile') or [None])[0])
+                    if c: clips.append(c); flen = max(flen, l)
+            gather(playlist)
             if not clips: return None  # MultiSound vacío en FMOD: no suena
-            ins = {'type': 'Sequential' if P(mo, 'playlistMode') == '1' else 'RandomClip', 'clips': clips}
+            ins = {'type': 'Sequential' if P(playlist, 'playlistMode') == '1' else 'RandomClip', 'clips': clips}
             if ins['type'] == 'RandomClip': ins['avoidRepeat'] = True
+            for inner in layers[1:]:
+                vol, pit = F(inner, 'volume'), F(inner, 'pitch')
+                ip, iv = convert_mods(objs, inner, path, warn, 'instrumento')
+                if vol: ins['_vol'] = ins.get('_vol', 0) + vol
+                if pit: ins['_pit'] = ins.get('_pit', 0) + pit
+                ins.setdefault('_mp', []).extend(ip); ins.setdefault('_mv', []).extend(iv)
         else:
             warn(f'{path}: instrumento {cls} no soportado'); return None
         length = F(mo, 'length', flen or 1.0)
         if P(mo, 'looping') == 'true': ins['loop'] = True
         off = F(mo, 'timelockedOffset')
         if off > 0: ins['startOffset'] = rnd(off)
-        if P(mo, 'volume') is not None: ins['volume'] = rnd(F(mo, 'volume'), 2)
-        if P(mo, 'pitch') is not None: ins['pitch'] = rnd(F(mo, 'pitch'), 2)
+        vol = F(mo, 'volume') + ins.pop('_vol', 0)
+        pit = F(mo, 'pitch') + ins.pop('_pit', 0)
+        if P(mo, 'volume') is not None or vol: ins['volume'] = rnd(vol, 2)
+        if P(mo, 'pitch') is not None or pit: ins['pitch'] = rnd(pit, 2)
         ip, iv = convert_mods(objs, mo, path, warn, 'instrumento')
+        ip += ins.pop('_mp', []); iv += ins.pop('_mv', [])
         if ip: ins['pitch'] = {'base': ins.get('pitch', 0), 'modulators': ip}
         if iv: ins['volume'] = {'base': ins.get('volume', 0), 'modulators': iv}
         reg = {'start': rnd(start), 'length': rnd(length), 'instrument': ins, '_mod': m}
@@ -248,6 +272,14 @@ def convert(objs, ev, fmod_root, unity_root, warn):
         regions = [r for r in (inst_region(m) for m in R(to, 'modules')) if r]
         tr['regions'] = regions
         tracks.append(tr)
+    sheet_modules = set()
+    for sh in (o for o in objs.values() if o.get('class') == 'ActionSheet' and o.get('_file') == ev.get('_file')):
+        sheet_modules.update(R(sh, 'modules'))
+    # Instruments placed on the event's master track (no audio track) play on the timeline like any other.
+    master_track = objs.get((R(ev, 'masterTrack') or [None])[0])
+    master_regions = [r for r in (inst_region(m) for m in R(master_track, 'modules') if m not in sheet_modules) if r]
+    if master_regions:
+        tracks.append({'name': 'Master', 'type': 'Music' if out['bus'] == 'Music' else 'SFX', 'regions': master_regions})
     for sh in (o for o in objs.values() if o.get('class') == 'ActionSheet' and o.get('_file') == ev.get('_file')):
         consecutive = P(sh, 'playbackMode') == '1'
         t0 = 0.0
