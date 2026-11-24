@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.1.5] - 2026-11-24
+- Studio: atajos con el `ShortcutManager` de Unity (funcionan aunque ningún control tenga el foco y se cambian en Edit > Shortcuts > SoddDesign Studio): Espacio play/stop, Esc stop, Inicio, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, S dividir, D o Ctrl+D duplicar, Supr/Backspace borrar, F encuadrar. Los botones del transporte no toman el foco. La barra muestra los atajos.
+
 ## [0.1.4] - 2026-11-24
 - Fix: un track sin bus propio usaba el bus Master en vez del bus del evento (Unity serializa el string vacío como `""`). Los sliders de Music/SFX no afectaban a nada; solo andaba Master.
 

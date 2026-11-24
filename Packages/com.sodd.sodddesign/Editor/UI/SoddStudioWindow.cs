@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.ShortcutManagement;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -180,11 +181,10 @@ namespace Sodd.Design.Editor
             _play = _root.Q<Button>("btn-play");
             _play.clicked += TogglePlay;
             _root.Q<Button>("btn-stop").clicked += () => StopPreview(true);
-            _root.Q<Button>("btn-rewind").clicked += () => { _s.Playhead = 0; _s.Offset = 0; _s.NotifyChanged(); };
+            _root.Q<Button>("btn-rewind").clicked += Rewind;
 
-            // atajos
-            rootVisualElement.focusable = true;
-            rootVisualElement.RegisterCallback<KeyDownEvent>(OnKey, TrickleDown.TrickleDown);
+            // Transport buttons never keep keyboard focus, so Space reaches the Play shortcut instead of re-clicking them.
+            foreach (var b in _root.Query<Button>(className: "sd-tbtn").ToList()) b.focusable = false;
 
             // loop de UI: solo el playhead/medidor se actualizan seguido
             _root.schedule.Execute(Live).Every(33);
@@ -615,32 +615,67 @@ namespace Sodd.Design.Editor
         bool IsTyping()
         {
             var f = rootVisualElement.focusController?.focusedElement as VisualElement;
-            if (f == null) return false;
             for (var v = f; v != null; v = v.parent)
-                if (v is TextField || v is FloatField || v is IntegerField || v is Slider) return true;
+                if (v is TextField || v is FloatField || v is IntegerField) return true;
             return false;
         }
 
-        void OnKey(KeyDownEvent e)
+        // Window shortcuts, rebindable in Edit > Shortcuts > SoddDesign Studio.
+        const string Sc = "SoddDesign Studio/";
+
+        static void Run(ShortcutArguments a, Action<SoddStudioWindow> action, bool needsEvent = true)
         {
-            if (IsTyping() || !HasEvent) return;
+            if (!(a.context is SoddStudioWindow w) || w.IsTyping() || (needsEvent && !w.HasEvent)) return;
+            action(w);
+        }
+
+        static void OnRegion(ShortcutArguments a, Action<SoddStudioWindow, int, int> action) =>
+            Run(a, w => { if (w._s.SelTrack >= 0 && w._s.SelRegion >= 0) action(w, w._s.SelTrack, w._s.SelRegion); });
+
+        [Shortcut(Sc + "Play - Stop", typeof(SoddStudioWindow), KeyCode.Space)]
+        static void ScPlay(ShortcutArguments a) => Run(a, w => w.TogglePlay());
+
+        [Shortcut(Sc + "Stop y volver al inicio", typeof(SoddStudioWindow), KeyCode.Escape)]
+        static void ScStop(ShortcutArguments a) => Run(a, w => { w.StopPreview(true); w.Rewind(); });
+
+        [Shortcut(Sc + "Volver al inicio", typeof(SoddStudioWindow), KeyCode.Home)]
+        static void ScHome(ShortcutArguments a) => Run(a, w => w.Rewind());
+
+        [Shortcut(Sc + "Deshacer", typeof(SoddStudioWindow), KeyCode.Z, ShortcutModifiers.Action)]
+        static void ScUndo(ShortcutArguments a) => Run(a, _ => Undo.PerformUndo(), false);
+
+        [Shortcut(Sc + "Rehacer", typeof(SoddStudioWindow), KeyCode.Y, ShortcutModifiers.Action)]
+        static void ScRedo(ShortcutArguments a) => Run(a, _ => Undo.PerformRedo(), false);
+
+        [Shortcut(Sc + "Rehacer (Shift)", typeof(SoddStudioWindow), KeyCode.Z, ShortcutModifiers.Action | ShortcutModifiers.Shift)]
+        static void ScRedoShift(ShortcutArguments a) => Run(a, _ => Undo.PerformRedo(), false);
+
+        [Shortcut(Sc + "Encuadrar", typeof(SoddStudioWindow), KeyCode.F)]
+        static void ScFit(ShortcutArguments a) => Run(a, w => w.ZoomToFit());
+
+        [Shortcut(Sc + "Dividir region", typeof(SoddStudioWindow), KeyCode.S)]
+        static void ScSplit(ShortcutArguments a) => OnRegion(a, (w, t, r) => w.Report(SoddCommands.SplitRegion(w._selectedId, t, r, w._s.Playhead)));
+
+        [Shortcut(Sc + "Duplicar region", typeof(SoddStudioWindow), KeyCode.D, ShortcutModifiers.Action)]
+        static void ScDuplicate(ShortcutArguments a) => OnRegion(a, (w, t, r) => w.Report(SoddCommands.DuplicateRegion(w._selectedId, t, r)));
+
+        [Shortcut(Sc + "Duplicar region (D)", typeof(SoddStudioWindow), KeyCode.D)]
+        static void ScDuplicatePlain(ShortcutArguments a) => ScDuplicate(a);
+
+        [Shortcut(Sc + "Borrar", typeof(SoddStudioWindow), KeyCode.Delete)]
+        static void ScDelete(ShortcutArguments a) => Run(a, w => w.DeleteSelection());
+
+        [Shortcut(Sc + "Borrar (Backspace)", typeof(SoddStudioWindow), KeyCode.Backspace)]
+        static void ScBackspace(ShortcutArguments a) => Run(a, w => w.DeleteSelection());
+
+        void Rewind() { _s.Playhead = 0; _s.Offset = 0; _s.NotifyChanged(); }
+
+        void DeleteSelection()
+        {
             int t = _s.SelTrack, r = _s.SelRegion;
-            bool region = t >= 0 && r >= 0;
-            switch (e.keyCode)
-            {
-                case KeyCode.Space: TogglePlay(); break;
-                case KeyCode.S when region && !e.actionKey: Report(SoddCommands.SplitRegion(_selectedId, t, r, _s.Playhead)); break;
-                case KeyCode.D when region && !e.actionKey: Report(SoddCommands.DuplicateRegion(_selectedId, t, r)); break;
-                case KeyCode.Delete:
-                case KeyCode.Backspace:
-                    if (region) { Report(SoddCommands.RemoveRegion(_selectedId, t, r)); _s.SelRegion = -1; }
-                    else if (t >= 0) { if (EditorUtility.DisplayDialog("Borrar track", "¿Borrar el track seleccionado?", "Borrar", "Cancelar")) Report(SoddCommands.RemoveTrack(_selectedId, t)); }
-                    break;
-                case KeyCode.Home: _s.Playhead = 0; _s.Offset = 0; _s.NotifyChanged(); break;
-                case KeyCode.F: ZoomToFit(); break;
-                default: return;
-            }
-            e.StopPropagation();
+            if (t >= 0 && r >= 0) { Report(SoddCommands.RemoveRegion(_selectedId, t, r)); _s.SelRegion = -1; }
+            else if (t >= 0 && EditorUtility.DisplayDialog("Borrar track", "¿Borrar el track seleccionado?", "Borrar", "Cancelar"))
+                Report(SoddCommands.RemoveTrack(_selectedId, t));
         }
     }
 }

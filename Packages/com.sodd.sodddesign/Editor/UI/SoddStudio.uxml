@@ -52,10 +52,11 @@
         <ui:VisualElement name="bottom" class="sd-bottom">
             <ui:VisualElement name="params" class="sd-params" />
             <ui:VisualElement name="transport" class="sd-transport">
-                <ui:Button name="btn-rewind" text="⏮" class="sd-tbtn" tooltip="Volver al inicio" />
+                <ui:Button name="btn-rewind" text="⏮" class="sd-tbtn" tooltip="Volver al inicio (Inicio)" />
                 <ui:Button name="btn-play" text="▶" class="sd-tbtn sd-tbtn--play" tooltip="Play / Stop (Espacio)" />
-                <ui:Button name="btn-stop" text="■" class="sd-tbtn" tooltip="Stop inmediato" />
+                <ui:Button name="btn-stop" text="■" class="sd-tbtn" tooltip="Stop y volver al inicio (Esc)" />
                 <ui:Label name="time" text="0.00 s" class="sd-time" />
+                <ui:Label name="shortcuts" text="Espacio play/stop · Esc stop · Ctrl+Z / Ctrl+Y · S dividir · D duplicar · Supr borrar · F encuadrar" class="sd-help" tooltip="Se cambian en Edit &gt; Shortcuts &gt; SoddDesign Studio" />
             </ui:VisualElement>
             <ui:VisualElement name="meter" class="sd-meter">
                 <ui:VisualElement class="sd-meter-bar"><ui:VisualElement name="meter-l" class="sd-meter-fill" /></ui:VisualElement>

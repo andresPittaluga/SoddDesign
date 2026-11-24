@@ -42,5 +42,15 @@ namespace Sodd.Design.Tests
             Assert.IsNotNull(tex);
             Assert.AreSame(tex, SoddWaveformCache.Get(clip), "se cachea");
         }
+
+        [Test]
+        public void StudioShortcutsAreRegistered()
+        {
+            var ids = new System.Collections.Generic.List<string>(UnityEditor.ShortcutManagement.ShortcutManager.instance.GetAvailableShortcutIds());
+            foreach (var id in new[] { "Play - Stop", "Stop y volver al inicio", "Deshacer", "Rehacer", "Dividir region", "Duplicar region", "Borrar", "Encuadrar" })
+                Assert.Contains("SoddDesign Studio/" + id, ids);
+            var play = UnityEditor.ShortcutManagement.ShortcutManager.instance.GetShortcutBinding("SoddDesign Studio/Play - Stop");
+            Assert.AreEqual(KeyCode.Space, System.Linq.Enumerable.First(play.keyCombinationSequence).keyCode);
+        }
     }
 }
