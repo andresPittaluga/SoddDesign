@@ -114,6 +114,30 @@ write('Events/ambience/drone.sodd.json', {
     'volume': {'base': -6, 'modulators': [{'type': 'LFO', 'shape': 'Sine', 'rate': 0.25, 'depth': 4},
                                           {'type': 'ADSR', 'attack': 1.5, 'sustain': 1, 'release': 2}]},
     'pitch': {'base': 0, 'modulators': [{'type': 'LFO', 'shape': 'Triangle', 'rate': 0.1, 'depth': 0.3}]},
-    'tracks': [{'name': 'Drone', 'type': 'Ambience', 'regions': [{'start': 0, 'length': 4, 'instrument': {'type': 'SingleClip', 'loop': True, 'clip': clip('drone_110')}}]}],
+    'tracks': [{'name': 'Drone', 'type': 'Ambience',
+                'effects': [{'type': 'LowPass', 'params': {'cutoff': {'base': 1800, 'modulators': [{'type': 'LFO', 'shape': 'Sine', 'rate': 0.15, 'depth': 1200}]}, 'resonance': 2}}],
+                'regions': [{'start': 0, 'length': 4, 'instrument': {'type': 'SingleClip', 'loop': True, 'clip': clip('drone_110')}}]}],
     'loopRegions': [{'name': 'Forever', 'start': 0, 'end': 4}],
+})
+
+write('Events/sfx/fx/lofi_beeps.sodd.json', {
+    'id': '5b0e7d9a-3c1f-4c55-9a51-0f1e2a3b4c07', 'path': 'sfx/fx/lofi_beeps',
+    'description': 'Arpegio de beeps en secuencia, lo-fi (Bitcrusher) con delay. Demo de efectos DSP propios.',
+    'tags': ['fx', 'demo'], 'bus': 'SFX',
+    'tracks': [{'name': 'Beeps', 'type': 'SFX',
+                'effects': [{'type': 'Bitcrusher', 'params': {'bits': 5, 'downsample': 6, 'mix': 1}},
+                            {'type': 'SimpleDelay', 'params': {'time': 0.18, 'feedback': 0.45, 'mix': 0.4}}],
+                'regions': [{'start': t * 0.2, 'length': 0.2, 'instrument': {'type': 'Sequential', 'clips': [clip('beep_220'), clip('beep_440'), clip('beep_880')]}} for t in range(6)]}],
+})
+
+write('Events/sfx/fx/robot.sodd.json', {
+    'id': '5b0e7d9a-3c1f-4c55-9a51-0f1e2a3b4c08', 'path': 'sfx/fx/robot',
+    'description': 'Barrido metálico/robótico: RingMod + Tremolo + Saturator, comprimido.',
+    'tags': ['fx', 'demo'], 'bus': 'SFX',
+    'tracks': [{'name': 'Sweep', 'type': 'SFX',
+                'effects': [{'type': 'RingMod', 'params': {'frequency': {'base': 300, 'modulators': [{'type': 'LFO', 'shape': 'Triangle', 'rate': 2, 'depth': 200}]}, 'mix': 0.8}},
+                            {'type': 'Tremolo', 'params': {'rate': 12, 'depth': 0.6}},
+                            {'type': 'Saturator', 'params': {'drive': 4, 'mix': 0.7, 'output': -3}},
+                            {'type': 'SimpleCompressor', 'params': {'threshold': -20, 'ratio': 6, 'makeup': 6}}],
+                'regions': [{'start': 0, 'length': 1, 'fadeOut': 0.2, 'instrument': {'type': 'SingleClip', 'clip': clip('sweep_down')}}]}],
 })

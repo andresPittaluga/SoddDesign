@@ -49,6 +49,8 @@ esac
 # Traer de vuelta los archivos nuevos que generó Unity en el espejo (.meta, registro, escenas generadas
 # por -executeMethod). Solo los que faltan en el original; un .meta solo si su archivo existe en el original.
 cd "$MIRROR"
+# En modo exec se traen también los archivos de CI_COPYBACK (separados por espacio), aunque ya existan.
+if [ "$MODE" = exec ]; then for f in ${CI_COPYBACK:-}; do [ -f "$f" ] && cp "$f" "$ROOT/$f"; done; fi
 for pass in 1 2; do find Assets Packages -type f | sort | while read -r m; do
   [ -f "$ROOT/$m" ] && continue
   case "$m" in

@@ -16,7 +16,7 @@
 - [x] Fase 0 — Setup
 - [x] Fase 1 — Runtime MVP (33 EditMode + 2 PlayMode tests en verde)
 - [x] Fase 2 — Timeline, loops, markers, parámetros, SoddCommands (40 EditMode + 2 PlayMode)
-- [ ] Fase 3 — Efectos, buses, mixer, snapshots, reverb zones
+- [x] Fase 3 — Efectos, buses, mixer, snapshots, reverb zones (47 EditMode + 2 PlayMode)
 - [ ] Fase 4 — Mockup UI → Studio + Mixer + Profiler
 - [ ] Fase 5 — Bridge + MCP + AI_GUIDE
 - [ ] Fase 6 — Netcode
@@ -65,6 +65,21 @@
 - Preview en Editor: `SoddPreview` (motor propio en GameObject HideAndDontSave + EditorApplication.update,
   lookahead 200 ms porque el tick del Editor es irregular). En Play Mode usa el motor del juego.
 - `SoddEngine.Start` sincroniza con `AudioSettings.dspTime` si todavía no hubo Update (bug encontrado por test).
+- **Efectos**: cada voz tiene TODOS los componentes de efecto pre-creados y desactivados (13 por voz) y se
+  habilitan según el track → cero AddComponent en runtime. Orden de proceso FIJO (HP→LP→Dist→Sat→Crush→Ring→
+  Chorus→Trem→AutoPan→Comp→Delay→Echo→Reverb), no el orden del JSON. Los efectos de track se aplican por voz
+  (equivalente para filtros lineales; el compresor comprime cada voz por separado).
+- DSP propios (`SoddDspFilters.cs`): params `volatile float`, buffers reservados en Awake, `[ExecuteAlways]`
+  para que suenen en el preview del Editor. `Render()` público para tests offline.
+- Snapshots: lowpass/highpass del bus se combinan con el LowPass/HighPass del track (min/max de cortes).
+- **SoddMixer.mixer** (`Runtime/Resources`) generado por reflection de la API interna del Editor
+  (`Window/Sodd/Dev/Rebuild SoddMixer (package)` o `bash Tools/ci.sh exec Sodd.Design.Editor.SoddMixerBuilder.Build`).
+  Grupos Master>Music,SFX,UI,Voice,Ambience,ReverbSend; SFX/Ambience/Voice tienen Send → ReverbSend
+  (Receive + SFX Reverb). Expuestos: `<Grupo>_Volume`. El volumen de los buses lógicos se aplica en la voz
+  (funciona aunque no haya mixer); el mixer da ruteo y reverb compartida.
+- **SoddReverbZone**: usa un AudioReverbZone de Unity (depende de la posición del LISTENER) + sube
+  `ReverbSend_Volume` del mixer según distancia del listener. `reverbSend` del track → `AudioSource.reverbZoneMix`.
+- `CI_COPYBACK="ruta1 ruta2" bash Tools/ci.sh exec Metodo` trae de vuelta archivos regenerados (ej. la escena).
 - Datos del Sandbox regenerables: `python Tools/gen_sandbox_data.py`; schema: `python Tools/gen_schema.py`.
 
 ## QUÉ PROBAR EN UNITY
@@ -103,3 +118,14 @@
 4. Apretá **Ctrl+Z** varias veces: se deshace paso a paso (marker, modulador, regiones...). Ctrl+Y rehace.
    Abrí el `.sodd.json` en un editor de texto para ver cómo cambia.
 5. `Window > Sodd > Validate All Events` → "Todos los eventos son válidos".
+
+### Fase 3 (≈2 min)
+1. Play en `Sandbox.unity`. El drone ahora además "se abre y se cierra" (LowPass con LFO en el cutoff).
+2. Apretá **5**: arpegio de beeps lo-fi (Bitcrusher) con delay. Apretá **6**: barrido robótico
+   (RingMod + Tremolo + Saturator + compresor).
+3. Apretá **M** (música) y después **U** (Underwater): en 1 s todo se apaga como bajo el agua (lowpass) y la
+   música baja. **N** vuelve a normal. **P** = menú de pausa (SFX/ambiente casi mudos, música filtrada).
+4. Reverb: en Play, seleccioná `Main Camera` y poné Position = (8, 1, 0) (adentro de "Reverb Zone (cueva)").
+   Apretá **4** y **2**: suenan con reverb de cueva. Volvé la cámara a (0, 9, -14): sin reverb.
+5. En el Project, `Packages/SoddDesign/Runtime/Resources/SoddMixer` → Window > Audio > Audio Mixer: se ven los
+   grupos (Music, SFX, UI, Voice, Ambience, ReverbSend). Mientras suena, los medidores de los grupos se mueven.

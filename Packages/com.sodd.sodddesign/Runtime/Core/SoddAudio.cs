@@ -218,6 +218,7 @@ namespace Sodd.Design
             }
             if (_listener != null) Engine.ListenerPosition = _listener.position;
             Engine.Update(AudioSettings.dspTime, Time.unscaledDeltaTime);
+            SoddReverbZone.UpdateZones(Engine.ListenerPosition, Engine.Snapshots.Mixer);
         }
 
         void OnDestroy()

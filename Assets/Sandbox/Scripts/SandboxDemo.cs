@@ -13,6 +13,8 @@ public class SandboxDemo : MonoBehaviour
     public SoddEventReference jump = SoddEventReference.FromPath("sfx/player/jump");
     public SoddEventReference hit = SoddEventReference.FromPath("sfx/impacts/hit");
     public SoddEventReference music = SoddEventReference.FromPath("music/loop");
+    public SoddEventReference lofi = SoddEventReference.FromPath("sfx/fx/lofi_beeps");
+    public SoddEventReference robot = SoddEventReference.FromPath("sfx/fx/robot");
     public Transform orbiter;
 
     SoddEventInstance _music;
@@ -33,6 +35,8 @@ public class SandboxDemo : MonoBehaviour
         if (Pressed(Key.Digit2)) SoddAudio.PlayOneShot(footstep, transform.position + Random.insideUnitSphere * 3f);
         if (Pressed(Key.Digit3)) SoddAudio.PlayOneShot(jump, transform.position);
         if (Pressed(Key.Digit4)) Hit();
+        if (Pressed(Key.Digit5)) SoddAudio.PlayOneShot(lofi);
+        if (Pressed(Key.Digit6)) SoddAudio.PlayOneShot(robot);
         if (Pressed(Key.M)) ToggleMusic();
         if (Pressed(Key.U)) SoddAudio.SetSnapshot("Underwater", 1f);
         if (Pressed(Key.P)) SoddAudio.SetSnapshot("Pause", 0.5f);
@@ -57,12 +61,14 @@ public class SandboxDemo : MonoBehaviour
     {
         GUILayout.BeginArea(new Rect(12, 12, 400, 540), GUI.skin.box);
         GUILayout.Label("<b>SoddDesign Sandbox</b>", new GUIStyle(GUI.skin.label) { richText = true, fontSize = 16 });
-        GUILayout.Label("1 click · 2 paso · 3 salto · 4 golpe (orbita) · M música\nU underwater · P menú pausa · N normal · Espacio pausa todo");
+        GUILayout.Label("1 click · 2 paso · 3 salto · 4 golpe (orbita) · 5 lo-fi · 6 robot · M música\nU underwater · P menú pausa · N normal · Espacio pausa todo");
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("Click")) SoddAudio.PlayOneShot(click);
         if (GUILayout.Button("Paso")) SoddAudio.PlayOneShot(footstep, transform.position);
         if (GUILayout.Button("Salto")) SoddAudio.PlayOneShot(jump, transform.position);
         if (GUILayout.Button("Golpe")) Hit();
+        if (GUILayout.Button("Lo-fi")) SoddAudio.PlayOneShot(lofi);
+        if (GUILayout.Button("Robot")) SoddAudio.PlayOneShot(robot);
         GUILayout.EndHorizontal();
         if (GUILayout.Button(_music.IsPlaying ? "■ Parar música (fade)" : "▶ Música en loop")) ToggleMusic();
         GUILayout.Label($"Health (global): {_health:0}  → salto más inestable con poca vida");

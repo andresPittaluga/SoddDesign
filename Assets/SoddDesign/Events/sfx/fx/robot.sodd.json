@@ -1,0 +1,73 @@
+{
+  "$schema": "../../../../../Packages/com.sodd.sodddesign/Schema/sodd.event.schema.json",
+  "id": "5b0e7d9a-3c1f-4c55-9a51-0f1e2a3b4c08",
+  "path": "sfx/fx/robot",
+  "description": "Barrido metálico/robótico: RingMod + Tremolo + Saturator, comprimido.",
+  "tags": [
+    "fx",
+    "demo"
+  ],
+  "bus": "SFX",
+  "tracks": [
+    {
+      "name": "Sweep",
+      "type": "SFX",
+      "effects": [
+        {
+          "type": "RingMod",
+          "params": {
+            "frequency": {
+              "base": 300,
+              "modulators": [
+                {
+                  "type": "LFO",
+                  "shape": "Triangle",
+                  "rate": 2,
+                  "depth": 200
+                }
+              ]
+            },
+            "mix": 0.8
+          }
+        },
+        {
+          "type": "Tremolo",
+          "params": {
+            "rate": 12,
+            "depth": 0.6
+          }
+        },
+        {
+          "type": "Saturator",
+          "params": {
+            "drive": 4,
+            "mix": 0.7,
+            "output": -3
+          }
+        },
+        {
+          "type": "SimpleCompressor",
+          "params": {
+            "threshold": -20,
+            "ratio": 6,
+            "makeup": 6
+          }
+        }
+      ],
+      "regions": [
+        {
+          "start": 0,
+          "length": 1,
+          "fadeOut": 0.2,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "60b6997f9c95aef4bb198666a63e0d22",
+              "path": "Assets/Sandbox/Audio/sweep_down.wav"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

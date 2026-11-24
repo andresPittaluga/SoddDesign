@@ -1,0 +1,163 @@
+{
+  "$schema": "../../../../../Packages/com.sodd.sodddesign/Schema/sodd.event.schema.json",
+  "id": "5b0e7d9a-3c1f-4c55-9a51-0f1e2a3b4c07",
+  "path": "sfx/fx/lofi_beeps",
+  "description": "Arpegio de beeps en secuencia, lo-fi (Bitcrusher) con delay. Demo de efectos DSP propios.",
+  "tags": [
+    "fx",
+    "demo"
+  ],
+  "bus": "SFX",
+  "tracks": [
+    {
+      "name": "Beeps",
+      "type": "SFX",
+      "effects": [
+        {
+          "type": "Bitcrusher",
+          "params": {
+            "bits": 5,
+            "downsample": 6,
+            "mix": 1
+          }
+        },
+        {
+          "type": "SimpleDelay",
+          "params": {
+            "time": 0.18,
+            "feedback": 0.45,
+            "mix": 0.4
+          }
+        }
+      ],
+      "regions": [
+        {
+          "start": 0.0,
+          "length": 0.2,
+          "instrument": {
+            "type": "Sequential",
+            "clips": [
+              {
+                "guid": "bb0b95e67a6880b47b042b92c383d9c2",
+                "path": "Assets/Sandbox/Audio/beep_220.wav"
+              },
+              {
+                "guid": "ca31acd3a7f51704b91d6cf71b99f47d",
+                "path": "Assets/Sandbox/Audio/beep_440.wav"
+              },
+              {
+                "guid": "0ad695731ce6b654f820c431f0ebc0bb",
+                "path": "Assets/Sandbox/Audio/beep_880.wav"
+              }
+            ]
+          }
+        },
+        {
+          "start": 0.2,
+          "length": 0.2,
+          "instrument": {
+            "type": "Sequential",
+            "clips": [
+              {
+                "guid": "bb0b95e67a6880b47b042b92c383d9c2",
+                "path": "Assets/Sandbox/Audio/beep_220.wav"
+              },
+              {
+                "guid": "ca31acd3a7f51704b91d6cf71b99f47d",
+                "path": "Assets/Sandbox/Audio/beep_440.wav"
+              },
+              {
+                "guid": "0ad695731ce6b654f820c431f0ebc0bb",
+                "path": "Assets/Sandbox/Audio/beep_880.wav"
+              }
+            ]
+          }
+        },
+        {
+          "start": 0.4,
+          "length": 0.2,
+          "instrument": {
+            "type": "Sequential",
+            "clips": [
+              {
+                "guid": "bb0b95e67a6880b47b042b92c383d9c2",
+                "path": "Assets/Sandbox/Audio/beep_220.wav"
+              },
+              {
+                "guid": "ca31acd3a7f51704b91d6cf71b99f47d",
+                "path": "Assets/Sandbox/Audio/beep_440.wav"
+              },
+              {
+                "guid": "0ad695731ce6b654f820c431f0ebc0bb",
+                "path": "Assets/Sandbox/Audio/beep_880.wav"
+              }
+            ]
+          }
+        },
+        {
+          "start": 0.6000000000000001,
+          "length": 0.2,
+          "instrument": {
+            "type": "Sequential",
+            "clips": [
+              {
+                "guid": "bb0b95e67a6880b47b042b92c383d9c2",
+                "path": "Assets/Sandbox/Audio/beep_220.wav"
+              },
+              {
+                "guid": "ca31acd3a7f51704b91d6cf71b99f47d",
+                "path": "Assets/Sandbox/Audio/beep_440.wav"
+              },
+              {
+                "guid": "0ad695731ce6b654f820c431f0ebc0bb",
+                "path": "Assets/Sandbox/Audio/beep_880.wav"
+              }
+            ]
+          }
+        },
+        {
+          "start": 0.8,
+          "length": 0.2,
+          "instrument": {
+            "type": "Sequential",
+            "clips": [
+              {
+                "guid": "bb0b95e67a6880b47b042b92c383d9c2",
+                "path": "Assets/Sandbox/Audio/beep_220.wav"
+              },
+              {
+                "guid": "ca31acd3a7f51704b91d6cf71b99f47d",
+                "path": "Assets/Sandbox/Audio/beep_440.wav"
+              },
+              {
+                "guid": "0ad695731ce6b654f820c431f0ebc0bb",
+                "path": "Assets/Sandbox/Audio/beep_880.wav"
+              }
+            ]
+          }
+        },
+        {
+          "start": 1.0,
+          "length": 0.2,
+          "instrument": {
+            "type": "Sequential",
+            "clips": [
+              {
+                "guid": "bb0b95e67a6880b47b042b92c383d9c2",
+                "path": "Assets/Sandbox/Audio/beep_220.wav"
+              },
+              {
+                "guid": "ca31acd3a7f51704b91d6cf71b99f47d",
+                "path": "Assets/Sandbox/Audio/beep_440.wav"
+              },
+              {
+                "guid": "0ad695731ce6b654f820c431f0ebc0bb",
+                "path": "Assets/Sandbox/Audio/beep_880.wav"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -45,6 +45,25 @@
     {
       "name": "Drone",
       "type": "Ambience",
+      "effects": [
+        {
+          "type": "LowPass",
+          "params": {
+            "cutoff": {
+              "base": 1800,
+              "modulators": [
+                {
+                  "type": "LFO",
+                  "shape": "Sine",
+                  "rate": 0.15,
+                  "depth": 1200
+                }
+              ]
+            },
+            "resonance": 2
+          }
+        }
+      ],
       "regions": [
         {
           "start": 0,

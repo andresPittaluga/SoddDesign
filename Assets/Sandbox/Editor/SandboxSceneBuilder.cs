@@ -47,6 +47,12 @@ public static class SandboxSceneBuilder
         em2.eventRef = new SoddEventReference(Ev("sfx/impacts/hit"));
         em2.playOn = SoddPlayTrigger.None;
 
+        var cave = new GameObject("Reverb Zone (cueva)");
+        cave.transform.position = new Vector3(8, 1, 0);
+        var zone = cave.AddComponent<SoddReverbZone>();
+        zone.preset = AudioReverbPreset.Cave;
+        zone.minDistance = 4; zone.maxDistance = 9;
+
         EditorSceneManager.SaveScene(scene, ScenePath);
         var list = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         if (!list.Exists(s => s.path == ScenePath)) { list.Insert(0, new EditorBuildSettingsScene(ScenePath, true)); EditorBuildSettings.scenes = list.ToArray(); }
