@@ -558,7 +558,7 @@ namespace Sodd.Design
                 src.pitch = ratio;
                 src.volume = 0f;
                 ConfigureSpatial(src, s);
-                var bus = Buses.FindOrMaster(ev.tracks[ti].bus ?? ev.bus);
+                var bus = Buses.FindOrMaster(TrackBus(ev, ev.tracks[ti]));
                 src.outputAudioMixerGroup = bus.MixerGroup;
                 v.transform.position = s.position;
                 v.effects?.Configure(ev.tracks[ti].effects);
@@ -699,7 +699,7 @@ namespace Sodd.Design
             if (region.fadeIn > 0f) fade *= SoddModulation.FadeShape(local / region.fadeIn, region.fadeInCurve);
             if (region.fadeOut > 0f) fade *= SoddModulation.FadeShape((region.length - local) / region.fadeOut, region.fadeOutCurve);
 
-            var bus = Buses.FindOrMaster(track.bus ?? ev.bus);
+            var bus = Buses.FindOrMaster(TrackBus(ev, track));
             float gain = SoddModulation.DbToLinear(db) * fade * bus.EffectiveGain * s.volumeScale;
             if (s.state == SoddInstanceState.Stopping) gain *= stopGain;
             v.gain = gain;
@@ -716,6 +716,9 @@ namespace Sodd.Design
             if (ev.is3D) v.transform.position = s.position;
             v.effects?.Update(track.effects, ref ctx, bus);
         }
+
+        /// <summary>The track's bus, or the event's when the track has none (Unity serializes a missing string as "").</summary>
+        static string TrackBus(SoddEventData ev, SoddTrack track) => string.IsNullOrEmpty(track.bus) ? ev.bus : track.bus;
 
         // ------------------------------------------------------------------ update
         /// <summary>Avanza el motor. dsp = AudioSettings.dspTime (o simulado en tests).</summary>

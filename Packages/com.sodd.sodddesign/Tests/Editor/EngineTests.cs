@@ -271,5 +271,23 @@ namespace Sodd.Design.Tests
             e.Update(0.3, 0f);
             NUnit.Framework.Assert.AreEqual(0.25f, e.Buses.Find("SFX").EffectiveGain, 0.01f, "VolumeLinear multiplica encima del fader (como FMOD)");
         }
+
+        [NUnit.Framework.Test]
+        public void EmptyTrackBusFallsBackToEventBus()
+        {
+            var e = TestUtil.Headless();
+            e.HeadlessClipLength = 4f;
+            // Unity serializes a track without bus as "", not null.
+            var a = TestUtil.MakeAsset(TestUtil.Event("mb", "\"bus\": \"Music\"", TestUtil.Track(TestUtil.Region(0, 4), "\"bus\": \"\"")));
+            var inst = e.CreateInstance(a);
+            inst.Start();
+            TestUtil.Run(e, 0, 0.2);
+            e.Buses.Find("Music").VolumeLinear = 0f;
+            TestUtil.Run(e, 0.2, 0.3);
+            float gain = -1f;
+            for (int i = 0; i < e.VoiceCount; i++)
+                if (e.GetVoice(i, out _, out _, out _, out float g)) gain = g;
+            NUnit.Framework.Assert.AreEqual(0f, gain, 1e-4f, "the Music slider must silence a Music event whose track has an empty bus");
+        }
     }
 }

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.1.4] - 2026-11-24
+- Fix: un track sin bus propio usaba el bus Master en vez del bus del evento (Unity serializa el string vacío como `""`). Los sliders de Music/SFX no afectaban a nada; solo andaba Master.
+
 ## [0.1.3] - 2026-11-24
 - Fix: `SoddListener`, `SoddAudioManager` y `SoddBankLoader` ahora están en archivos con su nombre (antes no se podían serializar en escenas/prefabs). GUIDs fijos de sus scripts.
 - `SoddListener` asegura un AudioListener en su GameObject y desactiva los demás; si no hay ningún listener, el manager agrega uno a la cámara principal al cargar cada escena (proyectos que venían de FMOD).
