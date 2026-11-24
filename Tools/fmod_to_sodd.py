@@ -135,6 +135,21 @@ def event_path(objs, ev):
         f = R(o, 'folder')
     return '/'.join(parts)
 
+def fmod_rolloff(kind, lo, hi, path, warn):
+    """FMOD Studio spatializer distance attenuation -> SoddDesign rolloff.
+    0 (default) Linear Squared, 1 Linear, 2 Inverse, 3 Inverse Tapered, 4 Off."""
+    span = max(1e-3, hi - lo)
+    lin_sq = lambda d: 1.0 if d <= lo else max(0.0, (hi - d) / span) ** 2
+    def curve(fn):
+        xs = [0.0, lo] + [lo + span * i / 8 for i in range(1, 9)]
+        return {'rolloff': 'Custom', 'customRolloff': [[rnd(x, 3), rnd(fn(x), 4)] for x in xs]}
+    if kind == '1': return {'rolloff': 'Linear'}
+    if kind == '2': return {'rolloff': 'Logarithmic'}
+    if kind == '3': return curve(lambda d: min(1.0 if d <= lo else lo / d, lin_sq(d)))
+    if kind == '4': return curve(lambda d: 1.0)
+    if kind != '0': warn(f'{path}: distanceRolloffType={kind} desconocido, se usa Linear Squared')
+    return curve(lin_sq)
+
 def convert(objs, ev, fmod_root, unity_root, warn):
     path = event_path(objs, ev)
     sodd_path = path.replace(' ', '_')
@@ -145,11 +160,13 @@ def convert(objs, ev, fmod_root, unity_root, warn):
     out = {'id': eid, 'path': sodd_path, 'description': f'Convertido desde FMOD event:/{path}.', 'tags': ['fmod'] + [path.split('/')[0].lower()]}
     # 3D
     props = objs.get((R(ev, 'automatableProperties') or [None])[0])
-    has_spatial = any(objs.get(e) is not None and objs[e].get('class') == 'SpatialiserEffect'
-                      for ch in R(master, 'effectChain') for e in R(objs.get(ch), 'effects')) if master is not None else False
-    if has_spatial:
+    spatialiser = next((objs[e] for ch in R(master, 'effectChain') for e in R(objs.get(ch), 'effects')
+                        if objs.get(e) is not None and objs[e].get('class') == 'SpatialiserEffect'), None) if master is not None else None
+    if spatialiser is not None:
         out['is3D'] = True
-        out['spatial'] = {'minDistance': rnd(F(props, 'minimumDistance', 1)), 'maxDistance': rnd(F(props, 'maximumDistance', 20))}
+        lo, hi = rnd(F(props, 'minimumDistance', 1)), rnd(F(props, 'maximumDistance', 20))
+        out['spatial'] = {'minDistance': lo, 'maxDistance': hi}
+        out['spatial'].update(fmod_rolloff(P(spatialiser, 'distanceRolloffType', '0'), lo, hi, path, warn))
     if P(props, 'maxVoices') is not None:
         out['maxInstances'] = int(F(props, 'maxVoices'))
         steal = P(props, 'voiceStealing')
