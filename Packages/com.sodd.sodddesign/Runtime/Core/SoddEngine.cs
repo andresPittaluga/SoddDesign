@@ -186,7 +186,17 @@ namespace Sodd.Design
             return default;
         }
 
-        internal void Start(SoddInstance s) => StartAt(s, _dsp + LookaheadSeconds * 0.5);
+        /// <summary>Reloj actual: en modo real se sincroniza con AudioSettings.dspTime (por si no hubo Update todavía).</summary>
+        double Now
+        {
+            get
+            {
+                if (!Headless) { double d = AudioSettings.dspTime; if (d > _dsp) _dsp = d; }
+                return _dsp;
+            }
+        }
+
+        internal void Start(SoddInstance s) => StartAt(s, Now + LookaheadSeconds * 0.5);
 
         internal void StartAt(SoddInstance s, double dsp)
         {

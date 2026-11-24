@@ -15,7 +15,7 @@
 ## Estado de fases
 - [x] Fase 0 — Setup
 - [x] Fase 1 — Runtime MVP (33 EditMode + 2 PlayMode tests en verde)
-- [ ] Fase 2 — Timeline, loops, markers, parámetros, SoddCommands
+- [x] Fase 2 — Timeline, loops, markers, parámetros, SoddCommands (40 EditMode + 2 PlayMode)
 - [ ] Fase 3 — Efectos, buses, mixer, snapshots, reverb zones
 - [ ] Fase 4 — Mockup UI → Studio + Mixer + Profiler
 - [ ] Fase 5 — Bridge + MCP + AI_GUIDE
@@ -52,6 +52,19 @@
 - Sandbox: `Assets/Sandbox/Sandbox.unity` se genera con `Sodd/Sandbox/Rebuild Sandbox Scene`
   (también por batchmode: `bash Tools/ci.sh exec SandboxSceneBuilder.Build`). Panel de debug con OnGUI
   (runtime, no es UI del Editor). Usa el Input System nuevo (el proyecto lo tiene activo).
+- **SoddCommands** (`Editor/Commands/SoddCommands.cs`): edita el JSON DOM, normaliza clips (acepta "kick",
+  "kick.wav" o path; escribe {guid, path}), valida (reader + buses + clips + nested) y si hay errores NO escribe.
+  `SetProperty` con número sobre una prop modulada cambia solo el `base`. `RemoveModulator` deja el atajo numérico
+  si no quedan moduladores. Extras además de los de la spec: Duplicate/Split/RemoveRegion, RemoveTrack, RemoveEffect,
+  EditEvent (JSON Patch), CreateEventFromJson, GetEvent, ListEvents, ListParameters, EditSettings.
+- **Undo** (`SoddUndo`): ScriptableObject oculto con {clave=id del evento, archivo, contenido, existe}.
+  Unity guarda sus versiones; al deshacer se aplican a disco solo las entradas que cambiaron (moves con
+  AssetDatabase.MoveAsset → conserva el GUID del .meta). Borrar + undo recrea el archivo (GUID de asset nuevo,
+  pero el id del evento —lo que usan las referencias— es el mismo).
+- MoveEvent/RenameEvent cambian el `path` lógico Y mueven el archivo a `Events/<path>.sodd.json`.
+- Preview en Editor: `SoddPreview` (motor propio en GameObject HideAndDontSave + EditorApplication.update,
+  lookahead 200 ms porque el tick del Editor es irregular). En Play Mode usa el motor del juego.
+- `SoddEngine.Start` sincroniza con `AudioSettings.dspTime` si todavía no hubo Update (bug encontrado por test).
 - Datos del Sandbox regenerables: `python Tools/gen_sandbox_data.py`; schema: `python Tools/gen_schema.py`.
 
 ## QUÉ PROBAR EN UNITY
@@ -80,3 +93,13 @@
 10. Abrí cualquier `Assets/SoddDesign/Events/**/*.sodd.json` en un editor de texto, cambiá algo (ej. `"volume": -20`)
     y guardá: se reimporta; si escribís un parámetro mal (`"parameter": "Vida"`) la consola dice
     "El parámetro 'Vida' no existe. ¿Quisiste decir 'Health'?".
+
+### Fase 2 (≈2 min, sin Play Mode)
+1. En Project, click en `Assets/SoddDesign/Events/music/loop` → el Inspector muestra resumen y botones
+   **▶ Preview / ■ Stop**. Apretá Preview: suena el loop SIN entrar en Play Mode. Stop lo corta.
+2. Click derecho sobre cualquier evento → `Sodd > Preview Event`.
+3. Menú `Window > Sodd > Dev > Create Demo Event (SoddCommands)`: crea `demo/commands_demo` por código
+   (2 beeps + kick con pitch aleatorio), lo selecciona y lo reproduce. En la consola sale el log de cada comando.
+4. Apretá **Ctrl+Z** varias veces: se deshace paso a paso (marker, modulador, regiones...). Ctrl+Y rehace.
+   Abrí el `.sodd.json` en un editor de texto para ver cómo cambia.
+5. `Window > Sodd > Validate All Events` → "Todos los eventos son válidos".
