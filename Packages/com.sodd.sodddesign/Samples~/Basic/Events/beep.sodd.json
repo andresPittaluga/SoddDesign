@@ -1,0 +1,39 @@
+{
+  "id": "8847f606-e94b-af09-9483-3697bb568927",
+  "path": "samples/basic/beep",
+  "description": "Beep de ejemplo con pitch aleatorio.",
+  "tags": [
+    "sample"
+  ],
+  "bus": "UI",
+  "pitch": {
+    "base": 0,
+    "modulators": [
+      {
+        "type": "Random",
+        "min": -2,
+        "max": 2,
+        "unit": "Semitones"
+      }
+    ]
+  },
+  "tracks": [
+    {
+      "name": "Beep",
+      "type": "SFX",
+      "regions": [
+        {
+          "start": 0,
+          "length": 0.25,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "5194a4f0538dedb87d575901157440da",
+              "path": "Assets/Samples/SoddDesign/0.1.0/Basic/Audio/beep_440.wav"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

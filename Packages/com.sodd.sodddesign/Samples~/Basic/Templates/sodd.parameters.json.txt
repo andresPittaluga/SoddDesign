@@ -1,0 +1,31 @@
+{
+  "parameters": [
+    {
+      "name": "Health",
+      "scope": "global",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "seekSpeed": 0,
+      "description": "Vida del jugador (0 = muerto, 100 = vida llena)."
+    },
+    {
+      "name": "Intensity",
+      "scope": "global",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "seekSpeed": 2,
+      "description": "Intensidad de la acción/música (0 = calma, 1 = combate)."
+    },
+    {
+      "name": "Speed",
+      "scope": "local",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "seekSpeed": 4,
+      "description": "Velocidad normalizada (motores, viento, pasos)."
+    }
+  ]
+}

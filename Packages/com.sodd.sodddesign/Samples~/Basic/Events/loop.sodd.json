@@ -1,0 +1,46 @@
+{
+  "id": "a8b64539-f2cf-5e28-2dbd-341f80a2b1ab",
+  "path": "samples/basic/loop",
+  "description": "Loop musical de 4 s con markers.",
+  "tags": [
+    "sample",
+    "music"
+  ],
+  "bus": "Music",
+  "tracks": [
+    {
+      "name": "Groove",
+      "type": "Music",
+      "regions": [
+        {
+          "start": 0,
+          "length": 4,
+          "instrument": {
+            "type": "SingleClip",
+            "clip": {
+              "guid": "2aeff0227ec16a789720a9d284641ba5",
+              "path": "Assets/Samples/SoddDesign/0.1.0/Basic/Audio/music_loop_120bpm.wav"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "loopRegions": [
+    {
+      "name": "Main",
+      "start": 0,
+      "end": 4
+    }
+  ],
+  "markers": [
+    {
+      "name": "Bar1",
+      "time": 0
+    },
+    {
+      "name": "Bar2",
+      "time": 2
+    }
+  ]
+}

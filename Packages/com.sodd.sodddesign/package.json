@@ -26,5 +26,8 @@
       "description": "SoddNetworkAudio + SoddNetworkEmitter con NGO 2.x (requiere com.unity.netcode.gameobjects).",
       "path": "Samples~/NetcodeDemo"
     }
-  ]
+  ],
+  "documentationUrl": "Documentation~/QUICKSTART.md",
+  "changelogUrl": "CHANGELOG.md",
+  "license": "MIT"
 }

@@ -20,8 +20,8 @@
 - [x] Fase 4 — Mockup UI → Studio + Mixer + Profiler (49 EditMode + 2 PlayMode)
 - [x] Fase 5 — Bridge + MCP + AI_GUIDE (52 EditMode + 2 PlayMode; MCP: 26 tools, smoke test stdio OK)
 - [x] Fase 6 — Netcode (55 EditMode + 2 PlayMode; incluye serialización del RPC)
-- [ ] Fase 7 — Addressables, docs, samples, v0.1.0
-- [ ] Fase 8 — Warpmart (solo cuando el humano lo pida)
+- [x] Fase 7 — Bancos/Addressables, optimizador, docs, samples, tag v0.1.0 (59 EditMode + 2 PlayMode)
+- [ ] Fase 8 — Warpmart (**esperando que el humano lo pida y pase la ruta del proyecto**; no tocar antes)
 
 ## Decisiones
 - Paquete embebido en `Packages/com.sodd.sodddesign` + `"testables"` en el manifest para correr sus tests.
@@ -116,6 +116,15 @@
   4 NetworkVariable<float> (write = Owner) con umbral y frecuencia máxima. No se especifica InvokePermission en
   los RPC (default Everyone en NGO 2.x; RequireOwnership está deprecado en 2.14).
 - Sample `Samples~/NetcodeDemo` (README + `NetDemoPlayer.cs`, copia compilada en `Assets/Sandbox/Netcode/`).
+- **Bancos**: `SoddBank` (ScriptableObject con eventos) + `SoddBanks.Load/Unload` (refcount) + `SoddBankLoader`.
+  `excludeFromRegistry` = esos eventos no van al registro de Resources. Addressables en assembly aparte
+  `Sodd.Design.Addressables` (defineConstraint `SODD_ADDRESSABLES`), `SoddAddressableBanks.LoadAsync(address)`.
+  El Sandbox tiene Addressables 2.11.2 instalado solo para verificar que compila.
+- **Optimizador** (`Window/Sodd/Optimize Audio Import Settings…` y botón "Optimizar" del Studio): <1 s →
+  DecompressOnLoad+ADPCM; 1–6 s → CompressedInMemory+Vorbis 70%; >6 s o música/ambiente en loop → Streaming+Vorbis 60%;
+  solo usado en eventos 3D → mono. Muestra el plan y pide confirmación (no tiene Undo).
+- Docs: `Packages/com.sodd.sodddesign/README.md`, `Documentation~/QUICKSTART.md`, `GUIA_TECNICO_AUDIO.md`,
+  `AI_GUIDE.md`, `CHANGELOG.md`. Sample `Basic` (3 eventos con GUIDs fijos de sus wavs + templates de settings).
 - Datos del Sandbox regenerables: `python Tools/gen_sandbox_data.py`; schema: `python Tools/gen_schema.py`.
 
 ## QUÉ PROBAR EN UNITY
@@ -201,3 +210,27 @@
   un objeto con SoddNetworkAudio y un player prefab con `NetDemoPlayer`). Con Multiplayer Play Mode o un build:
   J (salto) se escucha en los dos sin duplicarse en el host; F solo local; H solo para el dueño.
 - Si no querés probar red ahora, alcanza con ver que compila sin errores.
+
+### Fase 7 (≈2 min)
+1. Studio → botón **Optimizar**: muestra qué clips cambiaría (music_loop → Streaming, footsteps → ADPCM mono…).
+   Aceptá y mirá un clip en el Inspector.
+2. `Create > Sodd > Sound Bank`, arrastrá 1–2 eventos, dejá "Exclude From Registry" ✔. Poné un objeto con
+   `Sodd Bank Loader` en la escena apuntando al banco: esos eventos solo suenan mientras el objeto existe.
+3. Package Manager → SoddDesign → Samples: importá **Basic** y **Netcode Demo** (ver sus README).
+4. Leé `Packages/com.sodd.sodddesign/Documentation~/GUIA_TECNICO_AUDIO.md` (pensada para tu técnico de audio).
+
+## Próximos pasos sugeridos (post v0.1.0)
+- Fase 8 (Warpmart) cuando el humano lo pida: branch `feature/sodddesign`, paquete por git URL con tag `v0.1.0`.
+  Para eso hay que publicar este repo en un remoto (GitHub) — pedir la URL al humano.
+- Mejoras posibles: resucitar voces virtuales cuando se liberan voces; orden de efectos configurable;
+  editor de envolventes/curvas de fade; drag de loops/markers en la regla; tests de UI con eventos sintéticos;
+  vista de 500+ eventos medida con profiler (el navegador usa ListView virtualizado, pero el refresco
+  recorre todos los assets).
+
+## Limitaciones conocidas
+- Los efectos de track se aplican por voz (el compresor comprime cada voz por separado).
+- Cambiar el pitch con moduladores mientras suena no reprograma el `SetScheduledEndTime` (el final se calcula
+  con el pitch del disparo).
+- Las condiciones de salida de loop se evalúan ~100 ms antes del final del loop (lookahead).
+- Reverb zones: el AudioReverbZone de Unity depende de la posición del listener, no de la fuente.
+- Batchmode no puede abrir el proyecto si el Editor lo tiene abierto → por eso `Tools/ci.sh` usa una copia espejo.

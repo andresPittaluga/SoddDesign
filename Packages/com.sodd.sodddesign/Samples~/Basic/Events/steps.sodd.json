@@ -1,0 +1,47 @@
+{
+  "id": "76a6e23c-532a-4d52-001a-dad2f3bb2742",
+  "path": "samples/basic/steps",
+  "description": "Pasos 3D sin repetir.",
+  "tags": [
+    "sample"
+  ],
+  "is3D": true,
+  "spatial": {
+    "minDistance": 1,
+    "maxDistance": 20
+  },
+  "tracks": [
+    {
+      "name": "Steps",
+      "type": "SFX",
+      "regions": [
+        {
+          "start": 0,
+          "length": 0.25,
+          "instrument": {
+            "type": "RandomClip",
+            "avoidRepeat": true,
+            "clips": [
+              {
+                "guid": "1ac17ed11540f304f11ebb92bb599993",
+                "path": "Assets/Samples/SoddDesign/0.1.0/Basic/Audio/footstep_01.wav"
+              },
+              {
+                "guid": "67545b677cc670ebeba3519cb3ab6a16",
+                "path": "Assets/Samples/SoddDesign/0.1.0/Basic/Audio/footstep_02.wav"
+              },
+              {
+                "guid": "a0b34a11f65ea0ad20e168a6a1c3453a",
+                "path": "Assets/Samples/SoddDesign/0.1.0/Basic/Audio/footstep_03.wav"
+              },
+              {
+                "guid": "101d690dac2afbf990b450240ecc8f86",
+                "path": "Assets/Samples/SoddDesign/0.1.0/Basic/Audio/footstep_04.wav"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
