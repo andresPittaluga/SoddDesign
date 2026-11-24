@@ -456,6 +456,14 @@
           "type": "boolean",
           "description": "RandomClip: no repetir el último clip elegido (\"que no se repita\")."
         },
+        "sequenceScope": {
+          "type": "string",
+          "description": "Sequential: Global = el orden sigue entre todas las instancias del evento (one-shots tic-tac). Instance = cada instancia lleva su propio orden.",
+          "enum": [
+            "Global",
+            "Instance"
+          ]
+        },
         "loop": {
           "type": "boolean",
           "description": "El clip se repite dentro de la región hasta que termina la región."

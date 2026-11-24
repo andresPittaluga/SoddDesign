@@ -125,6 +125,7 @@ schema = {
                 'clip': ref('clip', 'Clip único (atajo para SingleClip).'),
                 'clips': arr(ref('clip', 'Clip.'), 'Lista de clips.'),
                 'avoidRepeat': b('RandomClip: no repetir el último clip elegido ("que no se repita").'),
+                'sequenceScope': s('Sequential: Global = el orden sigue entre todas las instancias del evento (one-shots tic-tac). Instance = cada instancia lleva su propio orden.', enum=['Global', 'Instance']),
                 'loop': b('El clip se repite dentro de la región hasta que termina la región.'),
                 'nestedEvent': s('NestedEvent: id o path del evento a disparar.'),
                 'volume': ref('modProp', 'Volumen del instrumento en dB.'),

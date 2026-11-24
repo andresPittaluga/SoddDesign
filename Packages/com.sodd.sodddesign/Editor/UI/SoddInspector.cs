@@ -437,6 +437,9 @@ namespace Sodd.Design.Editor
                 });
                 si.Add(Row(addClip));
                 if (ins.type == SoddInstrumentType.RandomClip) si.Add(Bool("Evitar repetir", ins.avoidRepeat, ip + "/avoidRepeat", "No elegir el mismo clip dos veces seguidas"));
+                if (ins.type == SoddInstrumentType.Sequential)
+                    si.Add(Choice("Orden", new List<string> { nameof(SoddSequenceScope.Global), nameof(SoddSequenceScope.Instance) }, ins.sequenceScope.ToString(), ip + "/sequenceScope",
+                        "Global: el orden sigue entre todas las instancias del evento. Instance: cada instancia lleva su propio orden"));
                 si.Add(Bool("Loop del clip", ins.loop, ip + "/loop", "Repetir el clip hasta el final de la región"));
             }
             si.Add(ModProp("Volumen", ip + "/volume", ins.volume, "dB", "Volumen del instrumento"));

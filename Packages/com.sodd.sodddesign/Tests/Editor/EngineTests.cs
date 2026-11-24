@@ -289,5 +289,31 @@ namespace Sodd.Design.Tests
                 if (e.GetVoice(i, out _, out _, out _, out float g)) gain = g;
             NUnit.Framework.Assert.AreEqual(0f, gain, 1e-4f, "the Music slider must silence a Music event whose track has an empty bus");
         }
+
+        static int[] SequentialPicks(string scope)
+        {
+            var e = TestUtil.Headless();
+            e.HeadlessClipLength = 0.1f;
+            string region = "{ \"start\": 0, \"length\": 0.1, \"instrument\": { \"type\": \"Sequential\", \"sequenceScope\": \"" + scope + "\", \"clips\": [\"Assets/a.wav\", \"Assets/b.wav\", \"Assets/c.wav\"] } }";
+            var a = TestUtil.MakeAsset(TestUtil.Event("seq" + scope, "", TestUtil.Track(region)));
+            var first = e.CreateInstance(a);
+            var second = e.CreateInstance(a);
+            var picks = new System.Collections.Generic.List<int>();
+            double t = 0;
+            foreach (var inst in new[] { first, first, second, first })
+            {
+                inst.Start();
+                t = TestUtil.Run(e, t, t + 0.3);
+                picks.Add(SoddEngine.LastPickedClip(a, 0, 0));
+            }
+            return picks.ToArray();
+        }
+
+        [NUnit.Framework.Test]
+        public void SequentialScopeGlobalSharesAndInstanceKeepsItsOwnOrder()
+        {
+            NUnit.Framework.CollectionAssert.AreEqual(new[] { 0, 1, 2, 0 }, SequentialPicks("Global"), "Global: one order for every instance");
+            NUnit.Framework.CollectionAssert.AreEqual(new[] { 0, 1, 0, 2 }, SequentialPicks("Instance"), "Instance: each instance keeps its own order");
+        }
     }
 }

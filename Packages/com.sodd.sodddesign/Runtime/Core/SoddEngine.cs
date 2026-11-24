@@ -69,6 +69,9 @@ namespace Sodd.Design
         public Action<SoddEventInstance> onStopped;
         public Action<SoddEventInstance, string> onLoopExit;
 
+        /// <summary>Per-instance positions of Sequential regions with Instance scope (lazy).</summary>
+        public int[] seq;
+
         public void Reset()
         {
             released = false; state = SoddInstanceState.Created; asset = null; ev = null;
@@ -76,6 +79,7 @@ namespace Sodd.Design
             voiceCount = 0; mkCount = 0; segCount = 0; childCount = 0;
             stopElapsed = -1f; elapsed = 0f; triggerCounter = 0; virtualVoices = 0; volumeScale = 1f; pitchScale = 1f;
             paused = userPaused = false;
+            seq = null;
             onMarker = null; onStopped = null; onLoopExit = null;
             for (int i = 0; i < MaxLoops; i++) loopExited[i] = false;
         }
@@ -596,9 +600,17 @@ namespace Sodd.Design
                         break;
                     }
                 case SoddInstrumentType.Sequential:
-                    pick = s.asset.seqIndex[flat] % clips.Length;
-                    s.asset.seqIndex[flat] = (pick + 1) % clips.Length;
+                {
+                    var positions = s.asset.seqIndex;
+                    if (ins.sequenceScope == SoddSequenceScope.Instance)
+                    {
+                        if (s.seq == null || s.seq.Length != positions.Length) s.seq = new int[positions.Length];
+                        positions = s.seq;
+                    }
+                    pick = positions[flat] % clips.Length;
+                    positions[flat] = (pick + 1) % clips.Length;
                     break;
+                }
                 default:
                     pick = 0;
                     break;

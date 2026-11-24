@@ -21,7 +21,7 @@ namespace Sodd.Design
         static readonly string[] SpatialKeys = { "spatialBlend", "minDistance", "maxDistance", "rolloff", "customRolloff", "doppler", "spread" };
         static readonly string[] TrackKeys = { "name", "type", "volume", "pan", "reverbSend", "mute", "solo", "bus", "effects", "regions" };
         static readonly string[] RegionKeys = { "name", "start", "length", "fadeIn", "fadeOut", "fadeInCurve", "fadeOutCurve", "instrument" };
-        static readonly string[] InstrumentKeys = { "type", "clips", "clip", "avoidRepeat", "loop", "nestedEvent", "volume", "pitch", "startOffset" };
+        static readonly string[] InstrumentKeys = { "type", "clips", "clip", "avoidRepeat", "sequenceScope", "loop", "nestedEvent", "volume", "pitch", "startOffset" };
         static readonly string[] ClipKeys = { "guid", "path", "weight" };
         static readonly string[] ModPropKeys = { "base", "modulators" };
         static readonly string[] ModKeys = { "type", "min", "max", "unit", "perTrigger", "parameter", "curve", "range", "shape", "rate", "depth", "phase", "attack", "hold", "decay", "sustain", "release" };
@@ -381,6 +381,7 @@ namespace Sodd.Design
             var i = r.instrument;
             i.type = Enum(ins, "type", ip, SoddInstrumentType.SingleClip);
             i.avoidRepeat = Bool(ins, "avoidRepeat", ip, true);
+            i.sequenceScope = Enum(ins, "sequenceScope", ip, SoddSequenceScope.Global);
             i.loop = Bool(ins, "loop", ip, false);
             i.nestedEvent = Str(ins, "nestedEvent", ip);
             i.volume = ReadModProp(ins, "volume", ip, 0f);

@@ -4,6 +4,8 @@ using UnityEngine;
 namespace Sodd.Design
 {
     public enum SoddStealMode { Oldest, Quietest, None }
+    /// <summary>Sequential: Global keeps one position per event across all instances; Instance gives each instance its own.</summary>
+    public enum SoddSequenceScope { Global, Instance }
     public enum SoddNetworkMode { Local, Broadcast, OwnerOnly }
     public enum SoddTrackType { SFX, Music, Voice, Ambience }
     public enum SoddInstrumentType { SingleClip, RandomClip, Sequential, Silence, NestedEvent }
@@ -123,6 +125,7 @@ namespace Sodd.Design
         public SoddInstrumentType type;
         public SoddClipRef[] clips = Array.Empty<SoddClipRef>();
         public bool avoidRepeat = true;
+        public SoddSequenceScope sequenceScope;
         public bool loop;
         /// <summary>Para NestedEvent: id (GUID) o path del evento anidado.</summary>
         public string nestedEvent;

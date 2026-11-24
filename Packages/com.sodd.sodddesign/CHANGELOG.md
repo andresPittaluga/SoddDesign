@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.1.6] - 2026-11-24
+- `Sequential`: nuevo `sequenceScope` (`Global` por defecto, el orden sigue entre todas las instancias del evento; `Instance`, cada instancia lleva su propio orden). Se elige en el inspector del Studio.
+
 ## [0.1.5] - 2026-11-24
 - Studio: atajos con el `ShortcutManager` de Unity (funcionan aunque ningún control tenga el foco y se cambian en Edit > Shortcuts > SoddDesign Studio): Espacio play/stop, Esc stop, Inicio, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, S dividir, D o Ctrl+D duplicar, Supr/Backspace borrar, F encuadrar. Los botones del transporte no toman el foco. La barra muestra los atajos.
 
