@@ -21,7 +21,16 @@
 - [x] Fase 5 — Bridge + MCP + AI_GUIDE (52 EditMode + 2 PlayMode; MCP: 26 tools, smoke test stdio OK)
 - [x] Fase 6 — Netcode (55 EditMode + 2 PlayMode; incluye serialización del RPC)
 - [x] Fase 7 — Bancos/Addressables, optimizador, docs, samples, tag v0.1.0 (59 EditMode + 2 PlayMode)
-- [ ] Fase 8 — Warpmart (**esperando que el humano lo pida y pase la ruta del proyecto**; no tocar antes)
+- [~] Fase 8 — Warpmart (EN CURSO, pedida por el humano el 2026-11-24)
+  - Repo: https://github.com/andresPittaluga/SoddDesign (privado), tags v0.1.0 y v0.1.1.
+  - Warpmart: `C:/Users/andys/OneDrive/Documentos/GitHub/WarpMart`, branch `feat/SoddDesign` (ya existía; el humano
+    pidió usarla y NO tocar sus cambios sin commitear: commitear solo archivos propios con `git add <rutas>`).
+  - Proyecto FMOD Studio: `C:/Users/andys/OneDrive/Documentos/GitHub/WarpMart_Audio` (174 eventos).
+  - Hecho: paquete por git URL #v0.1.1, `Assets/SoddDesign/` (settings, parameters, registro), 4 eventos convertidos
+    (Currency/Coin_PickUp, Weapons/Blitz/BlitzShoot, Music/InPlanet_HIG, Vending/Redeem), `docs/SODDDESIGN_MIGRATION.md`
+    con inventario (92 scripts FMOD) y plan. Commit ae9bfb929 en Warpmart (SIN push).
+  - Próximo: parte 1 = UI (UI_DropChoice, NotificationToast...) reemplazando EventReference por SoddEventReference,
+    previa conversión de sus eventos con `Tools/fmod_to_sodd.py`. No borrar FMOD hasta OK del humano.
 
 ## Decisiones
 - Paquete embebido en `Packages/com.sodd.sodddesign` + `"testables"` en el manifest para correr sus tests.
@@ -125,6 +134,13 @@
   solo usado en eventos 3D → mono. Muestra el plan y pide confirmación (no tiene Undo).
 - Docs: `Packages/com.sodd.sodddesign/README.md`, `Documentation~/QUICKSTART.md`, `GUIA_TECNICO_AUDIO.md`,
   `AI_GUIDE.md`, `CHANGELOG.md`. Sample `Basic` (3 eventos con GUIDs fijos de sus wavs + templates de settings).
+- **Conversor FMOD** (`Tools/fmod_to_sodd.py`, `Tools/fmod_inspect.py`): lee Metadata/*.xml de FMOD Studio
+  (cada evento guarda su grafo en su propio XML). No convierte automatizaciones/efectos (avisa).
+  Randomizer de pitch de FMOD: `amount` interpretado como % de 24 semitonos (verificar de oído).
+- v0.1.1: fix de orden de import (eventos importados antes que sus wavs en un proyecto nuevo): el postprocessor
+  reimporta los eventos con clips faltantes cuando llegan audios. Encontrado al instalar en Warpmart.
+- Batchmode en Warpmart (si no está abierto): `-executeMethod Sodd.Design.Editor.SoddMenu.Rebuild` / `.ValidateAll`.
+  Unity se reinicia solo tras resolver paquetes nuevos: esperar al proceso, no al log.
 - Datos del Sandbox regenerables: `python Tools/gen_sandbox_data.py`; schema: `python Tools/gen_schema.py`.
 
 ## QUÉ PROBAR EN UNITY
