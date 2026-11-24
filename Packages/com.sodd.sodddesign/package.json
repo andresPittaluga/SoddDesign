@@ -4,9 +4,27 @@
   "displayName": "SoddDesign",
   "description": "Audio middleware gratuito para Unity (estilo FMOD) de Sodd Studio: eventos con timeline, moduladores, efectos, buses, snapshots, editor visual (SoddDesign Studio) y puente MCP para IA.",
   "unity": "6000.0",
-  "author": { "name": "Sodd Studio" },
-  "keywords": ["audio", "middleware", "fmod", "sound", "music", "mcp"],
+  "author": {
+    "name": "Sodd Studio"
+  },
+  "keywords": [
+    "audio",
+    "middleware",
+    "fmod",
+    "sound",
+    "music",
+    "mcp"
+  ],
   "samples": [
-    { "displayName": "Basic", "description": "Eventos de ejemplo y escena mínima.", "path": "Samples~/Basic" }
+    {
+      "displayName": "Basic",
+      "description": "Eventos de ejemplo y escena mínima.",
+      "path": "Samples~/Basic"
+    },
+    {
+      "displayName": "Netcode Demo",
+      "description": "SoddNetworkAudio + SoddNetworkEmitter con NGO 2.x (requiere com.unity.netcode.gameobjects).",
+      "path": "Samples~/NetcodeDemo"
+    }
   ]
 }

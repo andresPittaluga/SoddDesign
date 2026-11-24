@@ -127,6 +127,47 @@ namespace Sodd.Design
 
         /// <summary>Pausa/reanuda todo el audio de SoddDesign (ej. menú de pausa).</summary>
         public static void Pause(bool paused) => Engine?.SetPaused(paused);
+
+        /// <summary>
+        /// Helpers de red (Netcode for GameObjects). Respetan el networkMode del evento:
+        /// Local = solo acá; Broadcast = suena acá al instante y se envía a los demás (RPC NotMe, sin duplicados en host);
+        /// OwnerOnly = solo lo escucha el cliente dueño (ownerClientId). Sin NGO o sin SoddNetworkAudio spawneado → local.
+        /// </summary>
+        public static class Net
+        {
+            public static bool IsNetworked => SoddNet.Handler != null && SoddNet.Handler.IsActive;
+
+            public static SoddEventInstance PlayOneShot(SoddEventReference evt, Vector3 position, SoddNetParams parameters = default, ulong ownerClientId = ulong.MaxValue)
+                => Play(Resolve(evt), position, null, parameters, ownerClientId);
+
+            public static SoddEventInstance PlayOneShot(string idOrPath, Vector3 position, SoddNetParams parameters = default, ulong ownerClientId = ulong.MaxValue)
+                => Play(Resolve(idOrPath), position, null, parameters, ownerClientId);
+
+            /// <summary>Adjunto a un Transform (debe tener NetworkObject para que los demás lo sigan; si no, se envía la posición).</summary>
+            public static SoddEventInstance PlayOneShot(SoddEventReference evt, Transform attachTo, SoddNetParams parameters = default, ulong ownerClientId = ulong.MaxValue)
+                => Play(Resolve(evt), attachTo != null ? attachTo.position : Vector3.zero, attachTo, parameters, ownerClientId);
+
+            static SoddEventInstance Play(SoddEventAsset asset, Vector3 pos, Transform attach, in SoddNetParams p, ulong owner)
+            {
+                if (asset == null) return default;
+                var h = SoddNet.Handler;
+                if (h != null && h.IsActive && asset.data.networkMode != SoddNetworkMode.Local) return h.PlayOneShot(asset, pos, attach, p, owner);
+                return PlayLocal(asset, pos, attach, p);
+            }
+
+            /// <summary>Reproduce local con parámetros (lo usa también el receptor de los RPC).</summary>
+            public static SoddEventInstance PlayLocal(SoddEventAsset asset, Vector3 pos, Transform attach, in SoddNetParams p)
+            {
+                var e = RequireEngine();
+                if (e == null || asset == null) return default;
+                var inst = e.CreateInstance(asset);
+                if (attach != null) inst.AttachTo(attach); else inst.Set3DPosition(pos);
+                p.ApplyTo(inst);
+                inst.Start();
+                inst.Release();
+                return inst;
+            }
+        }
     }
 
     /// <summary>Marca qué transform es el "oído" para cálculos de audibilidad/stealing (el AudioListener de Unity sigue espacializando).</summary>

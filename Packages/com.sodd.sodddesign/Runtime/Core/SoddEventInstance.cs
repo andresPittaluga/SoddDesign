@@ -45,6 +45,18 @@ namespace Sodd.Design
 
         public bool SetParameter(string name, float value, bool immediate = false) { var s = State; return s != null && _engine.SetLocal(s, name, value, immediate); }
         public bool SetParameter(int localIndex, float value, bool immediate = false) { var s = State; return s != null && _engine.SetLocal(s, localIndex, value, immediate); }
+        /// <summary>Setea un parámetro (local o global) por hash FNV-1a de su nombre (lo usa la red).</summary>
+        public bool SetParameterByHash(uint hash, float value, bool immediate = false)
+        {
+            var s = State;
+            if (s == null) return false;
+            var ps = s.ev.parameters;
+            for (int i = 0; i < ps.Length; i++) if (SoddText.Fnv1a(ps[i].name) == hash) return _engine.SetLocal(s, i, value, immediate);
+            var g = _engine.Parameters.Definitions;
+            for (int i = 0; i < g.Length; i++) if (SoddText.Fnv1a(g[i].name) == hash) return _engine.Parameters.Set(i, value, immediate);
+            return false;
+        }
+
         public float GetParameter(string name) { var s = State; return s != null ? _engine.GetLocal(s, name) : 0f; }
 
         public void Set3DPosition(Vector3 p) { var s = State; if (s != null) { s.position = p; s.hasAttach = false; } }

@@ -19,7 +19,7 @@
 - [x] Fase 3 — Efectos, buses, mixer, snapshots, reverb zones (47 EditMode + 2 PlayMode)
 - [x] Fase 4 — Mockup UI → Studio + Mixer + Profiler (49 EditMode + 2 PlayMode)
 - [x] Fase 5 — Bridge + MCP + AI_GUIDE (52 EditMode + 2 PlayMode; MCP: 26 tools, smoke test stdio OK)
-- [ ] Fase 6 — Netcode
+- [x] Fase 6 — Netcode (55 EditMode + 2 PlayMode; incluye serialización del RPC)
 - [ ] Fase 7 — Addressables, docs, samples, v0.1.0
 - [ ] Fase 8 — Warpmart (solo cuando el humano lo pida)
 
@@ -107,6 +107,15 @@
   Encuentra el proyecto con `--project`, `SODD_PROJECT` o subiendo desde su ubicación. `--check` hace ping.
   `node test-stdio.mjs` = smoke test del protocolo. Para reconstruir: `npm install && npm run build`.
 - `Documentation~/AI_GUIDE.md`: 38 entradas pedido→técnica + recetas + pointers útiles. Tool `get_ai_guide`.
+- **Netcode**: el Sandbox tiene NGO 2.14.0 en el manifest (para compilar/testear `Sodd.Design.Netcode`).
+  El runtime NO depende de NGO: `SoddAudio.Net.*` usa la interfaz `ISoddNetAudio` (`SoddNet.Handler`) que registra
+  `SoddNetworkAudio` al spawnear; sin red → reproduce local. Anti-duplicados elegido: **el que dispara reproduce
+  local al instante + RPC `SendTo.NotMe`** (Broadcast). OwnerOnly: RPC `SpecifiedInParams` a
+  `RpcTarget.Single(owner)`, o local si el que dispara es el dueño. Mensaje = hash FNV-1a del id del evento +
+  posición o NetworkObjectReference + hasta 4 params (hash del nombre + float). `SoddNetworkEmitter`: Playing +
+  4 NetworkVariable<float> (write = Owner) con umbral y frecuencia máxima. No se especifica InvokePermission en
+  los RPC (default Everyone en NGO 2.x; RequireOwnership está deprecado en 2.14).
+- Sample `Samples~/NetcodeDemo` (README + `NetDemoPlayer.cs`, copia compilada en `Assets/Sandbox/Netcode/`).
 - Datos del Sandbox regenerables: `python Tools/gen_sandbox_data.py`; schema: `python Tools/gen_schema.py`.
 
 ## QUÉ PROBAR EN UNITY
@@ -185,3 +194,10 @@
      lo valida y lo reproduce en Unity (sin Play Mode).
    - "Hacé el salto más grave y que suene lejos." → cambia pitch, agrega LowPass, baja volumen.
 4. Abrí el Studio: el evento nuevo aparece en el árbol; Ctrl+Z deshace lo que hizo la IA.
+
+### Fase 6 — Netcode (opcional, ≈5 min)
+- El proyecto ahora tiene NGO 2.14 instalado (Package Manager lo baja al abrir).
+- Seguí `Packages/com.sodd.sodddesign/Samples~/NetcodeDemo/README.md` (setup de 5 min con NetworkManager,
+  un objeto con SoddNetworkAudio y un player prefab con `NetDemoPlayer`). Con Multiplayer Play Mode o un build:
+  J (salto) se escucha en los dos sin duplicarse en el host; F solo local; H solo para el dueño.
+- Si no querés probar red ahora, alcanza con ver que compila sin errores.
