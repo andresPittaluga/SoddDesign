@@ -18,7 +18,7 @@
 - [x] Fase 2 — Timeline, loops, markers, parámetros, SoddCommands (40 EditMode + 2 PlayMode)
 - [x] Fase 3 — Efectos, buses, mixer, snapshots, reverb zones (47 EditMode + 2 PlayMode)
 - [x] Fase 4 — Mockup UI → Studio + Mixer + Profiler (49 EditMode + 2 PlayMode)
-- [ ] Fase 5 — Bridge + MCP + AI_GUIDE
+- [x] Fase 5 — Bridge + MCP + AI_GUIDE (52 EditMode + 2 PlayMode; MCP: 26 tools, smoke test stdio OK)
 - [ ] Fase 6 — Netcode
 - [ ] Fase 7 — Addressables, docs, samples, v0.1.0
 - [ ] Fase 8 — Warpmart (solo cuando el humano lo pida)
@@ -97,6 +97,16 @@
 - Atajos (ventana con foco y sin estar escribiendo): Espacio play/stop, S split en playhead, D duplicar,
   Supr/Backspace borrar, F zoom-to-fit, Home inicio. Ctrl+Z/Y = Undo global de Unity.
 - `SoddStudioHooks` = punto de enganche para el bridge de IA (estado "IA: on/off" en la toolbar).
+- **Bridge** (`Editor/Bridge/SoddBridge.cs`): TcpListener en `IPAddress.Loopback` con HTTP/1.1 mínimo hecho a
+  mano (más predecible que HttpListener en Mono). Auth `Authorization: Bearer <token>`; token nuevo por sesión
+  en `Library/SoddDesign/bridge.json` (se borra al cerrar). Rechaza `Origin` (navegadores) y Host no local
+  (DNS rebinding). Arranca solo (EditorPrefs `SoddBridge.Enabled`, default true; no arranca en batchmode).
+  Ejecuta en main thread vía cola bombeada en `EditorApplication.update`, timeout 30 s.
+- **MCP** (`Tools~/sodddesign-mcp`): TypeScript + SDK oficial 1.32 (`registerTool`) + zod 4. Se bundlea con
+  esbuild a `dist/index.js` (un archivo, sin node_modules) y **se commitea** para que funcione con solo Node.
+  Encuentra el proyecto con `--project`, `SODD_PROJECT` o subiendo desde su ubicación. `--check` hace ping.
+  `node test-stdio.mjs` = smoke test del protocolo. Para reconstruir: `npm install && npm run build`.
+- `Documentation~/AI_GUIDE.md`: 38 entradas pedido→técnica + recetas + pointers útiles. Tool `get_ai_guide`.
 - Datos del Sandbox regenerables: `python Tools/gen_sandbox_data.py`; schema: `python Tools/gen_schema.py`.
 
 ## QUÉ PROBAR EN UNITY
@@ -164,3 +174,14 @@
 7. Toolbar → **Mixer**: faders de buses, M/S, y botones de snapshots (Underwater/Pause/Normal) mientras suena
    algo. **Profiler**: instancias y voces en vivo.
 8. En Play Mode del Sandbox, editá un volumen en el Studio: se escucha el cambio al instante (live update).
+
+### Fase 5 — IA por MCP (≈3 min)
+1. Con Unity abierto, mirá la toolbar del Studio: arriba a la derecha dice **"IA: ● on"** (click = on/off).
+2. En Unity: `Window > Sodd > AI Bridge > Copy Claude Code command`. Pegalo en una terminal y ejecutalo
+   (registra el servidor MCP `sodddesign` en Claude Code). Reiniciá Claude Code.
+3. Pedile a Claude, en castellano y sin tecnicismos, por ejemplo:
+   - "Listame los sonidos que hay." → usa `list_events`.
+   - "Creá un sonido de moneda con los beeps, que suba de tono, y hacémelo escuchar." → crea el evento,
+     lo valida y lo reproduce en Unity (sin Play Mode).
+   - "Hacé el salto más grave y que suene lejos." → cambia pitch, agrega LowPass, baja volumen.
+4. Abrí el Studio: el evento nuevo aparece en el árbol; Ctrl+Z deshace lo que hizo la IA.
