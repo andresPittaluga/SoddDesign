@@ -21,16 +21,16 @@
 - [x] Fase 5 — Bridge + MCP + AI_GUIDE (52 EditMode + 2 PlayMode; MCP: 26 tools, smoke test stdio OK)
 - [x] Fase 6 — Netcode (55 EditMode + 2 PlayMode; incluye serialización del RPC)
 - [x] Fase 7 — Bancos/Addressables, optimizador, docs, samples, tag v0.1.0 (59 EditMode + 2 PlayMode)
-- [~] Fase 8 — Warpmart (EN CURSO, pedida por el humano el 2026-11-24)
-  - Repo: https://github.com/andresPittaluga/SoddDesign (privado), tags v0.1.0 y v0.1.1.
-  - Warpmart: `C:/Users/andys/OneDrive/Documentos/GitHub/WarpMart`, branch `feat/SoddDesign` (ya existía; el humano
-    pidió usarla y NO tocar sus cambios sin commitear: commitear solo archivos propios con `git add <rutas>`).
+- [~] Fase 8 — Warpmart: **audio 100% migrado a SoddDesign, falta que el humano lo pruebe y confirme quitar FMOD**
+  - Repo SoddDesign: https://github.com/andresPittaluga/SoddDesign (privado). Tags v0.1.0..v0.1.3 (Warpmart usa v0.1.3).
+  - Warpmart: `C:/Users/andys/OneDrive/Documentos/GitHub/WarpMart`, branch `feat/SoddDesign`, commits ae9bfb929,
+    5cef4a9d4, 28e61e002, 07f3123bf (SIN push). El humano tiene cambios propios sin commitear (2 modelos de enemigo,
+    PP_Vignette.mat, ProjectSettings.asset): NO tocarlos; commitear siempre con `git add <rutas propias>`.
   - Proyecto FMOD Studio: `C:/Users/andys/OneDrive/Documentos/GitHub/WarpMart_Audio` (174 eventos).
-  - Hecho: paquete por git URL #v0.1.1, `Assets/SoddDesign/` (settings, parameters, registro), 4 eventos convertidos
-    (Currency/Coin_PickUp, Weapons/Blitz/BlitzShoot, Music/InPlanet_HIG, Vending/Redeem), `docs/SODDDESIGN_MIGRATION.md`
-    con inventario (92 scripts FMOD) y plan. Commit ae9bfb929 en Warpmart (SIN push).
-  - Próximo: parte 1 = UI (UI_DropChoice, NotificationToast...) reemplazando EventReference por SoddEventReference,
-    previa conversión de sus eventos con `Tools/fmod_to_sodd.py`. No borrar FMOD hasta OK del humano.
+  - Hecho: 174 eventos convertidos, 260 audios copiados, 93 scripts migrados, StudioListener→SoddListener,
+    audio de Unity reactivado, buses como el mixer de FMOD. Detalle y checklist para quitar FMOD en
+    `WarpMart/docs/SODDDESIGN_MIGRATION.md`.
+  - Próximo: feedback de oído del humano → ajustes en eventos; con su OK, ejecutar el checklist "Quitar FMOD".
 
 ## Decisiones
 - Paquete embebido en `Packages/com.sodd.sodddesign` + `"testables"` en el manifest para correr sus tests.
@@ -141,6 +141,12 @@
   reimporta los eventos con clips faltantes cuando llegan audios. Encontrado al instalar en Warpmart.
 - Batchmode en Warpmart (si no está abierto): `-executeMethod Sodd.Design.Editor.SoddMenu.Rebuild` / `.ValidateAll`.
   Unity se reinicia solo tras resolver paquetes nuevos: esperar al proceso, no al log.
+- Migración FMOD (v0.1.2–0.1.3): `SoddEventReference` tiene campos `Guid` (SoddLegacyGuid, layout de FMOD.GUID) y
+  `Path` para leer EventReference serializados al cambiar el tipo del campo. `SoddEvents.Find` acepta "event:/..." y
+  "{guid}"; `SoddBus.Find` acepta "bus:/...". `SoddBus.VolumeLinear` = multiplicador aparte del fader (como FMOD).
+  `SoddFmodCompat` (Pos, State, EventExists). Scripts con GUID fijo: SoddListener 5dd15e7e...0001,
+  SoddAudioManager ...0002, SoddBankLoader ...0003 (para cambiar m_Script de componentes FMOD en YAML).
+- Lección: proyectos FMOD tienen `m_DisableAudio: 1` en AudioManager.asset y no tienen AudioListener de Unity.
 - Datos del Sandbox regenerables: `python Tools/gen_sandbox_data.py`; schema: `python Tools/gen_schema.py`.
 
 ## QUÉ PROBAR EN UNITY
