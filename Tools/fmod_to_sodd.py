@@ -193,6 +193,7 @@ def convert(objs, ev, fmod_root, unity_root, warn):
             for s in R(mo, 'sounds'):
                 c, l = clip_of((R(objs.get(s), 'audioFile') or [None])[0])
                 if c: clips.append(c); flen = max(flen, l)
+            if not clips: return None  # MultiSound vacío en FMOD: no suena
             ins = {'type': 'Sequential' if P(mo, 'playlistMode') == '1' else 'RandomClip', 'clips': clips}
             if ins['type'] == 'RandomClip': ins['avoidRepeat'] = True
         else:
