@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3] - 2026-11-24
+- Fix: `SoddListener`, `SoddAudioManager` y `SoddBankLoader` ahora están en archivos con su nombre (antes no se podían serializar en escenas/prefabs). GUIDs fijos de sus scripts.
+- `SoddListener` asegura un AudioListener en su GameObject y desactiva los demás; si no hay ningún listener, el manager agrega uno a la cámara principal al cargar cada escena (proyectos que venían de FMOD).
+- `SoddBus.VolumeLinear` es un multiplicador aparte del fader (como `Bus.setVolume` de FMOD).
+- `SoddFmodCompat`: `Pos(...)`, `State(...)`/`SoddPlaybackState`, `EventExists`, `LengthSeconds`.
+- Herramientas: `Tools/fmod_to_sodd.py` (ActionSheets, automatizaciones, buses reales) y `Tools/fmod_code_migrate.py`.
+
 ## [0.1.2] - 2026-11-24
 - Compatibilidad FMOD: `SoddEventReference` lee los valores serializados de `FMODUnity.EventReference` (Guid Data1..4 + Path) al cambiar el tipo del campo; `SoddEvents.Find` acepta "event:/..." y "{guid}"; `SoddBus.Find` acepta "bus:/...".
 - `SoddEventInstance.Pitch` (ratio), `Length`, `StartFrom(segundos)`; `SoddBus.VolumeLinear`.

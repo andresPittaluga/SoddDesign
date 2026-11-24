@@ -109,12 +109,17 @@ namespace Sodd.Design
             set { _volumeDb = Mathf.Clamp(value, -80f, 24f); _fading = false; }
         }
 
-        /// <summary>Volumen lineal (0..1+), como Bus.setVolume de FMOD.</summary>
+        /// <summary>
+        /// Multiplicador lineal extra (0..1+), como Bus.setVolume de FMOD: se aplica ENCIMA del fader (<see cref="Volume"/> en dB,
+        /// que viene de sodd.settings.json). Ideal para los sliders de volumen de las opciones del juego.
+        /// </summary>
         public float VolumeLinear
         {
-            get => SoddModulation.DbToLinear(_volumeDb);
-            set => Volume = SoddModulation.LinearToDb(Mathf.Max(0f, value));
+            get => _userGain;
+            set => _userGain = Mathf.Max(0f, value);
         }
+        float _userGain = 1f;
+        internal float UserGain => _userGain;
 
         public void FadeTo(float db, float seconds)
         {
@@ -183,13 +188,13 @@ namespace Sodd.Design
             {
                 var b = _buses[i];
                 float db = b.Volume + b.snapshotDb;
-                float gain = b.Mute ? 0f : SoddModulation.DbToLinear(db);
+                float gain = b.Mute ? 0f : SoddModulation.DbToLinear(db) * b.UserGain;
                 bool paused = b.Paused;
                 float lp = b.snapshotLowpass, hp = b.snapshotHighpass;
                 bool soloOk = !anySolo || b.Solo || b == Master;
                 for (var p = b.Parent; p != null; p = p.Parent)
                 {
-                    gain *= p.Mute ? 0f : SoddModulation.DbToLinear(p.Volume + p.snapshotDb);
+                    gain *= p.Mute ? 0f : SoddModulation.DbToLinear(p.Volume + p.snapshotDb) * p.UserGain;
                     paused |= p.Paused;
                     lp = Mathf.Min(lp, p.snapshotLowpass);
                     hp = Mathf.Max(hp, p.snapshotHighpass);

@@ -266,8 +266,10 @@ namespace Sodd.Design.Tests
             NUnit.Framework.Assert.AreEqual(1, e.ActiveVoiceCount, "la región que ya empezó suena desde el offset");
             NUnit.Framework.Assert.AreSame(e.Buses.Master, e.Buses.Find("bus:/"));
             NUnit.Framework.Assert.AreSame(e.Buses.Find("SFX"), e.Buses.Find("bus:/SFX"));
+            e.Buses.Find("SFX").Volume = -6.0206f;
             e.Buses.Find("SFX").VolumeLinear = 0.5f;
-            NUnit.Framework.Assert.AreEqual(-6.02f, e.Buses.Find("SFX").Volume, 0.05f);
+            e.Update(0.3, 0f);
+            NUnit.Framework.Assert.AreEqual(0.25f, e.Buses.Find("SFX").EffectiveGain, 0.01f, "VolumeLinear multiplica encima del fader (como FMOD)");
         }
     }
 }
