@@ -30,6 +30,9 @@
   - Hecho: 174 eventos convertidos, 260 audios copiados, 93 scripts migrados, StudioListener→SoddListener,
     audio de Unity reactivado, buses como el mixer de FMOD. Detalle y checklist para quitar FMOD en
     `WarpMart/docs/SODDDESIGN_MIGRATION.md`.
+  - Branch pusheada a origin. Comparador A/B TEMPORAL: `WarpMart/Assets/SoundTest_TEMP/` (copia de la Sandbox +
+    panel ▶FMOD/▶Sodd/veredicto → `WarpMart/SoundTest_RESULTADOS.md`). Leer ese archivo para corregir eventos.
+  - Guía (Claude Docs): https://claude.ai/artifact/Ee8MtR8Rw3kToLiT7JJqsZ
   - Próximo: feedback de oído del humano → ajustes en eventos; con su OK, ejecutar el checklist "Quitar FMOD".
 
 ## Decisiones
