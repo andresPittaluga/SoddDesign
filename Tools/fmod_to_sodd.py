@@ -150,13 +150,22 @@ def convert(objs, ev, fmod_root, unity_root, warn):
     if has_spatial:
         out['is3D'] = True
         out['spatial'] = {'minDistance': rnd(F(props, 'minimumDistance', 1)), 'maxDistance': rnd(F(props, 'maximumDistance', 20))}
+    if P(props, 'maxVoices') is not None:
+        out['maxInstances'] = int(F(props, 'maxVoices'))
+        steal = P(props, 'voiceStealing')
+        if steal is not None:
+            mode = {'0': 'Oldest', '1': 'Quietest', '3': 'None'}.get(steal)
+            if mode: out['stealMode'] = mode
+            else: warn(f'{path}: voiceStealing={steal} sin equivalente, queda Oldest')
     mi = objs.get((R(ev, 'mixerInput') or [None])[0])
     grp = objs.get((R(mi, 'output') or [None])[0])
     out['bus'] = P(grp, 'name', 'Master') if grp is not None and grp.get('class') == 'MixerGroup' else 'Master'
     if master is not None:
         if P(master, 'volume') is not None: out['volume'] = rnd(F(master, 'volume'), 2)
         mods_p, mods_v = convert_mods(objs, master, path, warn, 'master')
-        if mods_p: out['pitch'] = {'base': 0, 'modulators': mods_p}
+        base_p = rnd(F(master, 'pitch'), 2) if P(master, 'pitch') is not None else 0
+        if mods_p: out['pitch'] = {'base': base_p, 'modulators': mods_p}
+        elif base_p: out['pitch'] = base_p
         if mods_v: out['volume'] = {'base': out.get('volume', 0), 'modulators': mods_v}
     # tracks
     copied = {}
