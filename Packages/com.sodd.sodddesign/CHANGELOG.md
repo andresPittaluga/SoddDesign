@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.1.12] - 2026-11-25
+- El alto de cada track se guarda por nombre: sigue a su track al reordenar, borrar o duplicar otros y al deshacer; al renombrar un track, su alto pasa al nombre nuevo.
+
 ## [0.1.11] - 2026-11-25
 - Alto de cada track: arrastrar el borde de abajo de su nombre (40–240 px, doble click = 64). Se guarda por evento en EditorPrefs, no en el `.sodd.json`. Con más alto entran más franjas de un multi-instrumento.
 - Barra de vista general bajo la regla: todo el evento en miniatura y un recuadro con la parte visible; se arrastra o se hace click para moverse.

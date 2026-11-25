@@ -469,7 +469,7 @@ namespace Sodd.Design.Editor
                 h.RegisterCallback<PointerLeaveEvent>(_ => { if (_resizeTrack < 0) h.RemoveFromClassList("sd-cur-resize-v"); });
                 h.AddManipulator(new ContextualMenuManipulator(e =>
                 {
-                    e.menu.AppendAction("Renombrar…", _ => SoddPrompt.Show("Renombrar track", "Nombre", tr.name, v => Report(SoddCommands.SetProperty(_selectedId, $"/tracks/{ti}/name", Sodd.Design.Json.SoddJson.Write(Sodd.Design.Json.JsonNode.From(v), false)))));
+                    e.menu.AppendAction("Renombrar…", _ => RenameTrack(ti));
                     e.menu.AppendAction("Subir", _ => MoveTrackTo(ti, ti - 1), ti > 0 ? DropdownMenuAction.Status.Normal : DropdownMenuAction.Status.Disabled);
                     e.menu.AppendAction("Bajar", _ => MoveTrackTo(ti, ti + 1), ti < count - 1 ? DropdownMenuAction.Status.Normal : DropdownMenuAction.Status.Disabled);
                     e.menu.AppendAction("Duplicar track", _ => Report(SoddCommands.DuplicateTrack(_selectedId, ti)));
@@ -605,8 +605,19 @@ namespace Sodd.Design.Editor
         {
             var r = SoddCommands.MoveTrack(_selectedId, from, to);
             Report(r);
-            if (r.ok) _s.MoveTrackHeight(from, to);
             if (r.ok) { _s.SelTrack = Mathf.Clamp(to, 0, _s.Asset.data.tracks.Length - 1); _s.SelRegion = -1; }
+        }
+
+        void RenameTrack(int t)
+        {
+            if (!HasEvent || t < 0 || t >= _s.Asset.data.tracks.Length) return;
+            string old = _s.Asset.data.tracks[t].name;
+            SoddPrompt.Show("Renombrar track", "Nombre", old, v =>
+            {
+                var r = SoddCommands.SetProperty(_selectedId, $"/tracks/{t}/name", Sodd.Design.Json.SoddJson.Write(Sodd.Design.Json.JsonNode.From(v), false));
+                Report(r);
+                if (r.ok) _s.RenameTrackHeight(old, v);
+            });
         }
 
         // ---- markers
@@ -948,8 +959,7 @@ namespace Sodd.Design.Editor
                         SoddPrompt.Show("Renombrar región", "Nombre", d.tracks[t].regions[r].name ?? "", v => Report(SoddCommands.SetProperty(_selectedId, $"/tracks/{t}/regions/{r}/name", J(v))));
                     break;
                 case RenameKind.Track:
-                    if (t < d.tracks.Length)
-                        SoddPrompt.Show("Renombrar track", "Nombre", d.tracks[t].name, v => Report(SoddCommands.SetProperty(_selectedId, $"/tracks/{t}/name", J(v))));
+                    RenameTrack(t);
                     break;
                 default:
                     SoddPrompt.Show("Renombrar evento", "Nombre", d.Name, v => Report(SoddCommands.RenameEvent(_selectedId, v)));

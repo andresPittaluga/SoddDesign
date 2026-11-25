@@ -42,12 +42,15 @@ namespace Sodd.Design.Editor
         public float LoopEnd(int i) => i == DragLoop ? DragLoopEnd : Asset.data.loopRegions[i].end;
 
         // ---- alto de cada track: preferencia de vista por evento (EditorPrefs), no se guarda en el .sodd.json
-        readonly List<float> _heights = new List<float>();
+        // Keyed by track name, so the height follows its track through reorder, delete, duplicate and undo.
+        readonly Dictionary<string, float> _heights = new Dictionary<string, float>();
         string _heightsFor;
-        const string HeightsPrefKey = "SoddDesign.TrackHeights.";
+        const string HeightsPrefKey = "SoddDesign.TrackHeights2.";
+        const char PairSep = '\u001e', KeySep = '\u001f';
 
         int TrackCount => Asset != null && Asset.data != null ? Asset.data.tracks.Length : 0;
-        public float TrackHeight(int t) => t >= 0 && t < _heights.Count ? _heights[t] : DefaultTrackHeight;
+        string TrackKey(int t) => t >= 0 && t < TrackCount ? Asset.data.tracks[t].name ?? "" : "#" + t;
+        public float TrackHeight(int t) => t >= 0 && _heights.TryGetValue(TrackKey(t), out float h) ? h : DefaultTrackHeight;
         public float TrackTop(int t) { float y = 0; for (int k = 0; k < t; k++) y += TrackHeight(k); return y; }
         public float TracksHeight => TrackTop(TrackCount);
 
@@ -64,20 +67,19 @@ namespace Sodd.Design.Editor
         public void SetTrackHeight(int t, float h, bool save)
         {
             if (t < 0) return;
-            while (_heights.Count <= t) _heights.Add(DefaultTrackHeight);
-            _heights[t] = Mathf.Clamp(Mathf.Round(h), MinTrackHeight, MaxTrackHeight);
+            float v = Mathf.Clamp(Mathf.Round(h), MinTrackHeight, MaxTrackHeight);
+            if (Mathf.Approximately(v, DefaultTrackHeight)) _heights.Remove(TrackKey(t));
+            else _heights[TrackKey(t)] = v;
             if (save) SaveHeights();
             NotifyChanged();
         }
 
-        /// <summary>Al mover un track, su alto viaja con él.</summary>
-        public void MoveTrackHeight(int from, int to)
+        /// <summary>Al renombrar un track, su alto pasa al nombre nuevo.</summary>
+        public void RenameTrackHeight(string oldName, string newName)
         {
-            int n = Mathf.Max(TrackCount, Mathf.Max(from, to) + 1);
-            while (_heights.Count < n) _heights.Add(DefaultTrackHeight);
-            float h = _heights[from];
-            _heights.RemoveAt(from);
-            _heights.Insert(Mathf.Clamp(to, 0, _heights.Count), h);
+            if (oldName == null || newName == null || oldName == newName || !_heights.TryGetValue(oldName, out float h)) return;
+            _heights.Remove(oldName);
+            _heights[newName] = h;
             SaveHeights();
         }
 
@@ -87,19 +89,21 @@ namespace Sodd.Design.Editor
             _heightsFor = eventId;
             _heights.Clear();
             if (string.IsNullOrEmpty(eventId)) return;
-            foreach (var part in EditorPrefs.GetString(HeightsPrefKey + eventId, "").Split(','))
-                if (float.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out float h)) _heights.Add(Mathf.Clamp(h, MinTrackHeight, MaxTrackHeight));
+            foreach (var pair in EditorPrefs.GetString(HeightsPrefKey + eventId, "").Split(PairSep))
+            {
+                int k = pair.LastIndexOf(KeySep);
+                if (k <= 0 || !float.TryParse(pair.Substring(k + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out float h)) continue;
+                _heights[pair.Substring(0, k)] = Mathf.Clamp(h, MinTrackHeight, MaxTrackHeight);
+            }
         }
 
         void SaveHeights()
         {
             if (string.IsNullOrEmpty(_heightsFor)) return;
-            int last = _heights.Count - 1;
-            while (last >= 0 && Mathf.Approximately(_heights[last], DefaultTrackHeight)) last--;
-            if (last < 0) { EditorPrefs.DeleteKey(HeightsPrefKey + _heightsFor); return; }
-            var parts = new string[last + 1];
-            for (int k = 0; k <= last; k++) parts[k] = _heights[k].ToString(CultureInfo.InvariantCulture);
-            EditorPrefs.SetString(HeightsPrefKey + _heightsFor, string.Join(",", parts));
+            if (_heights.Count == 0) { EditorPrefs.DeleteKey(HeightsPrefKey + _heightsFor); return; }
+            var parts = new List<string>(_heights.Count);
+            foreach (var kv in _heights) parts.Add(kv.Key + KeySep + kv.Value.ToString(CultureInfo.InvariantCulture));
+            EditorPrefs.SetString(HeightsPrefKey + _heightsFor, string.Join(PairSep.ToString(), parts));
         }
 
         public static Color TrackColor(SoddTrackType t)

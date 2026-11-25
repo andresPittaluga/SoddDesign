@@ -59,6 +59,26 @@ namespace Sodd.Design.Tests
         }
 
         [Test]
+        public void TrackHeightFollowsItsTrackNotItsPosition()
+        {
+            var a = ScriptableObject.CreateInstance<SoddEventAsset>();
+            SoddTrack T(string n) => new SoddTrack { name = n };
+            a.SetData(new SoddEventData { tracks = new[] { T("A"), T("B"), T("C") } }, null);
+            var s = new SoddTimelineState { Asset = a };
+            s.SetTrackHeight(1, 150f, false);
+            Assert.AreEqual(150f, s.TrackHeight(1));
+            a.data.tracks = new[] { T("B"), T("A"), T("C") };
+            Assert.AreEqual(150f, s.TrackHeight(0), "reordenado: el alto viaja con B");
+            Assert.AreEqual(SoddTimelineState.DefaultTrackHeight, s.TrackHeight(1));
+            a.data.tracks = new[] { T("B"), T("C") };
+            Assert.AreEqual(150f, s.TrackHeight(0), "borrar otro track no le cambia el alto");
+            s.RenameTrackHeight("B", "Bajo");
+            a.data.tracks = new[] { T("Bajo"), T("C") };
+            Assert.AreEqual(150f, s.TrackHeight(0), "renombrado: el alto pasa al nombre nuevo");
+            Object.DestroyImmediate(a);
+        }
+
+        [Test]
         public void F2RenamesWhatIsSelected()
         {
             Assert.AreEqual(SoddStudioWindow.RenameKind.Marker, SoddStudioWindow.RenameTarget(0, 1, 2));
