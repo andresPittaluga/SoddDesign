@@ -825,7 +825,7 @@ namespace Sodd.Design.Editor
             {
                 _s.Playing = false;
                 if (_inst.IsValid && !_inst.IsPlaying) { _inst.Release(); _inst = default; }
-                if (_loopPreview && !_userStopped && HasEvent) StartPreview();
+                if (_loopPreview && !_userStopped && HasEvent && _s.Asset.data.Length > 0.05f) StartPreview();
             }
             // medidor (master)
             var e = SoddPreview.IsRunning || Application.isPlaying ? SoddPreview.Engine : null;

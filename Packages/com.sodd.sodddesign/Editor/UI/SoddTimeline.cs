@@ -431,15 +431,15 @@ namespace Sodd.Design.Editor
         }
 
         const int MaxStrips = 6;
-        const float MinStripPx = 6f, LabelPx = 14f;
+        const float MinStripPx = 10f, LabelPx = 14f;
 
-        /// <summary>Franjas en que se divide una región: una por clip en RandomClip/Sequential (máx. 6), si entran.</summary>
-        static int StripCount(SoddInstrument ins, float waveHeight)
+        /// <summary>Franjas en que se divide una región: una por clip en RandomClip/Sequential, tantas como entren con su nombre legible (máx. 6); la última avisa "+N más".</summary>
+        internal static int StripCount(SoddInstrument ins, float waveHeight)
         {
             bool multi = (ins.type == SoddInstrumentType.RandomClip || ins.type == SoddInstrumentType.Sequential) && ins.clips.Length > 1;
             if (!multi) return 1;
-            int n = Mathf.Min(ins.clips.Length, MaxStrips);
-            return waveHeight / n >= MinStripPx ? n : 1;
+            int n = Mathf.Min(ins.clips.Length, MaxStrips, Mathf.FloorToInt(waveHeight / MinStripPx));
+            return n >= 2 ? n : 1;
         }
 
         static Rect WaveRect(Rect region) { region.yMin += LabelPx; return region; }

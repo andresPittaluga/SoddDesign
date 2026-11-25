@@ -1,7 +1,7 @@
 # Changelog
 
 ## [0.1.10] - 2026-11-24
-- Regiones RandomClip/Sequential: cada sonido en su propia franja (waveform + nombre, numerados en la secuencia), como el multi-instrumento de FMOD; más de 6 muestra "+N más".
+- Regiones RandomClip/Sequential: cada sonido en su propia franja (waveform + nombre, numerados en la secuencia), como el multi-instrumento de FMOD; tantas franjas como entren con el nombre legible (hasta 6) y "+N más" en la última.
 - Preview: botón ⟳ junto a Play (tecla L) que repite la escucha sin cambiar el evento.
 - Al lado de cada perilla con modulador Random se ve el valor que tocó en el último play, y la franja del clip elegido queda resaltada. El motor guarda los últimos disparos (`SoddEventInstance.GetRecentTriggers`, `Seed`).
 - Formato canónico de los `.sodd.json` (`SoddCommands.Canonical`, `Sodd/Dev/Normalize Event Files`): guardar sin cambios reales deja el archivo idéntico; `markers`/`loopRegions` vacíos no se escriben.

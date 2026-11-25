@@ -169,7 +169,7 @@ namespace Sodd.Design.Editor
                 var readout = new Label("—") { tooltip = "Valor que tocó en el último play (base + random). Cambia en cada play." };
                 readout.AddToClassList("sd-rnd-readout");
                 row.Add(readout);
-                RandomReadouts.Add(new RandomReadout { label = readout, ptr = ptr, prop = prop, kind = unit == "dB" ? SoddPropKind.GainDb : unit == "st" ? SoddPropKind.Semitones : SoddPropKind.Generic, unit = unit });
+                RandomReadouts.Add(new RandomReadout { label = readout, ptr = ptr, prop = prop, kind = ptr.Contains("/effects/") ? SoddPropKind.Generic : unit == "dB" ? SoddPropKind.GainDb : unit == "st" ? SoddPropKind.Semitones : SoddPropKind.Generic, unit = unit });
             }
             bool open = s_openMods.Contains(_evt + ptr);
             var mb = new Button { text = prop.HasModulators ? "∿" + prop.modulators.Length : "＋", tooltip = prop.HasModulators ? "Ver/editar moduladores" : "Agregar modulador (Random, curva por parámetro, LFO, ADSR...)" };

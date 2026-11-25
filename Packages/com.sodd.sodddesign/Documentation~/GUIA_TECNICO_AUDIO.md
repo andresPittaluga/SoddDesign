@@ -75,7 +75,7 @@ Los atajos se pueden cambiar en `Edit > Shortcuts > SoddDesign Studio`.
 - El juego recibe cada marker como callback `OnMarker` con su nombre.
 
 ### Multi-instrumentos (Random y Secuencia)
-- Una región *RandomClip* o *Sequential* muestra cada sonido apilado en su propia franja, con su waveform y su nombre (en la secuencia, numerados en orden). Con más de 6 sonidos se ven 6 y "+N más".
+- Una región *RandomClip* o *Sequential* muestra cada sonido apilado en su propia franja, con su waveform y su nombre (en la secuencia, numerados en orden). Se ven tantas franjas como entran con su nombre legible (hasta 6); si hay más sonidos, la última franja dice "+N más" y el título de la región dice el total.
 - Después de cada play, la franja del sonido que tocó queda resaltada con una barra blanca.
 
 ### Escuchar varias veces

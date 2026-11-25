@@ -35,6 +35,17 @@ namespace Sodd.Design.Tests
         }
 
         [Test]
+        public void MultiInstrumentStripsKeepTheirNamesReadable()
+        {
+            SoddInstrument Multi(int n) { var i = new SoddInstrument { type = SoddInstrumentType.RandomClip, clips = new SoddClipRef[n] }; for (int k = 0; k < n; k++) i.clips[k] = new SoddClipRef(); return i; }
+            Assert.AreEqual(1, SoddTimelineCanvas.StripCount(new SoddInstrument { type = SoddInstrumentType.SingleClip, clips = new[] { new SoddClipRef() } }, 38f));
+            Assert.AreEqual(2, SoddTimelineCanvas.StripCount(Multi(2), 38f));
+            Assert.AreEqual(3, SoddTimelineCanvas.StripCount(Multi(5), 38f), "con 38 px entran 3 franjas de al menos 10 px");
+            Assert.AreEqual(6, SoddTimelineCanvas.StripCount(Multi(12), 200f), "nunca más de 6");
+            Assert.AreEqual(1, SoddTimelineCanvas.StripCount(Multi(4), 15f), "si no entran 2 con nombre, una sola waveform");
+        }
+
+        [Test]
         public void WaveformCacheBuildsTexture()
         {
             var clip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sandbox/Audio/kick.wav");
