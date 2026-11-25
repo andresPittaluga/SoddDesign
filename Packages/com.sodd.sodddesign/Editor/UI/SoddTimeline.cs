@@ -14,7 +14,10 @@ namespace Sodd.Design.Editor
         public float PixelsPerSecond = 120f;
         public float Offset; // segundos visibles a la izquierda
         public float Snap = 0.05f;
-        public int SelTrack = -1, SelRegion = -1;
+        public int SelTrack = -1, SelRegion = -1, SelMarker = -1;
+        /// <summary>Marker que se está arrastrando (-1 = ninguno) y su tiempo provisorio.</summary>
+        public int DragMarker = -1;
+        public float DragMarkerTime;
         public float Playhead;
         public bool Playing;
         public SoddEventAsset Asset;
@@ -26,7 +29,9 @@ namespace Sodd.Design.Editor
         public float XToTime(float x) => x / PixelsPerSecond + Offset;
         public float SnapTime(float t, bool bypass = false) => bypass || Snap <= 0f ? Mathf.Max(0f, t) : Mathf.Max(0f, Mathf.Round(t / Snap) * Snap);
         public void NotifyChanged() => Changed?.Invoke();
-        public void Select(int track, int region) { SelTrack = track; SelRegion = region; SelectionChanged?.Invoke(); Changed?.Invoke(); }
+        public void Select(int track, int region) { SelTrack = track; SelRegion = region; SelMarker = -1; SelectionChanged?.Invoke(); Changed?.Invoke(); }
+        public void SelectMarker(int marker) { SelTrack = -1; SelRegion = -1; SelMarker = marker; SelectionChanged?.Invoke(); Changed?.Invoke(); }
+        public float MarkerTime(int i) => i == DragMarker ? DragMarkerTime : Asset.data.markers[i].time;
 
         public static Color TrackColor(SoddTrackType t)
         {
@@ -91,23 +96,103 @@ namespace Sodd.Design.Editor
         }
     }
 
-    /// <summary>Regla de tiempo: ticks, loop regions, markers y playhead.</summary>
+    /// <summary>
+    /// Regla de tiempo: ticks, loop regions, markers y playhead. Click o arrastre mueve el playhead;
+    /// sobre un marker: click lo selecciona, arrastrar lo mueve (Shift = sin snap), doble click lo renombra.
+    /// </summary>
     public sealed class SoddRuler : VisualElement
     {
+        const float MarkerHitPx = 7f;
+
         readonly SoddTimelineState _s;
         readonly List<Label> _labels = new List<Label>();
         public Action<float, Vector2> ContextRequested;
+        public Action<int, float> MarkerMoved;
+        public Action<int> MarkerRenameRequested;
+        public Action<int, Vector2> MarkerContextRequested;
+
+        bool _scrubbing;
+        float _downX;
 
         public SoddRuler(SoddTimelineState s)
         {
             _s = s;
             style.flexGrow = 1;
             generateVisualContent += Draw;
-            RegisterCallback<PointerDownEvent>(e =>
+            RegisterCallback<PointerDownEvent>(OnDown);
+            RegisterCallback<PointerMoveEvent>(OnMove);
+            RegisterCallback<PointerUpEvent>(OnUp);
+        }
+
+        /// <summary>Índice del marker más cercano a x (en px locales) dentro del área de click, o -1.</summary>
+        public int MarkerAt(float x)
+        {
+            var a = _s.Asset;
+            if (a == null) return -1;
+            int best = -1; float bestD = MarkerHitPx;
+            for (int i = 0; i < a.data.markers.Length; i++)
             {
-                if (e.button == 0) { _s.Playhead = _s.SnapTime(_s.XToTime(e.localPosition.x)); _s.NotifyChanged(); }
-                else if (e.button == 1) ContextRequested?.Invoke(_s.XToTime(e.localPosition.x), e.position);
-            });
+                float d = Mathf.Abs(_s.TimeToX(a.data.markers[i].time) - x);
+                if (d <= bestD) { bestD = d; best = i; }
+            }
+            return best;
+        }
+
+        void OnDown(PointerDownEvent e)
+        {
+            float x = e.localPosition.x;
+            int m = MarkerAt(x);
+            if (e.button == 1)
+            {
+                if (m >= 0) { _s.SelectMarker(m); MarkerContextRequested?.Invoke(m, e.position); }
+                else ContextRequested?.Invoke(_s.XToTime(x), e.position);
+                e.StopPropagation();
+                return;
+            }
+            if (e.button != 0) return;
+            if (m >= 0)
+            {
+                if (e.clickCount == 2) { MarkerRenameRequested?.Invoke(m); e.StopPropagation(); return; }
+                _s.SelectMarker(m);
+                _s.DragMarker = m; _s.DragMarkerTime = _s.Asset.data.markers[m].time;
+                _downX = x;
+            }
+            else
+            {
+                _scrubbing = true;
+                _s.Playhead = _s.SnapTime(_s.XToTime(x)); _s.NotifyChanged();
+            }
+            this.CapturePointer(e.pointerId);
+            e.StopPropagation();
+        }
+
+        void OnMove(PointerMoveEvent e)
+        {
+            if (!this.HasPointerCapture(e.pointerId)) return;
+            float x = e.localPosition.x;
+            if (_s.DragMarker >= 0)
+            {
+                if (Mathf.Abs(x - _downX) < 2f) return;
+                _s.DragMarkerTime = _s.SnapTime(_s.XToTime(x), e.shiftKey);
+                _s.NotifyChanged();
+            }
+            else if (_scrubbing)
+            {
+                _s.Playhead = _s.SnapTime(_s.XToTime(x), e.shiftKey); _s.NotifyChanged();
+            }
+        }
+
+        void OnUp(PointerUpEvent e)
+        {
+            if (!this.HasPointerCapture(e.pointerId)) return;
+            this.ReleasePointer(e.pointerId);
+            _scrubbing = false;
+            int m = _s.DragMarker;
+            if (m < 0) return;
+            float t = _s.DragMarkerTime;
+            _s.DragMarker = -1;
+            if (_s.Asset != null && m < _s.Asset.data.markers.Length && Mathf.Abs(t - _s.Asset.data.markers[m].time) > 1e-4f) MarkerMoved?.Invoke(m, t);
+            else _s.NotifyChanged();
         }
 
         Label L(int i, string cls)
@@ -133,11 +218,12 @@ namespace Sodd.Design.Editor
             }
             var a = _s.Asset;
             if (a != null)
-                foreach (var m in a.data.markers)
+                for (int i = 0; i < a.data.markers.Length; i++)
                 {
                     var l = L(n++, "sd-marker-label");
-                    l.text = "◆ " + m.name;
-                    l.style.left = _s.TimeToX(m.time) - 3;
+                    l.EnableInClassList("sd-marker-label--sel", i == _s.SelMarker);
+                    l.text = a.data.markers[i].name;
+                    l.style.left = _s.TimeToX(_s.MarkerTime(i)) + 6;
                 }
             for (int i = n; i < _labels.Count; i++) _labels[i].style.display = DisplayStyle.None;
             MarkDirtyRepaint();
@@ -174,11 +260,15 @@ namespace Sodd.Design.Editor
                     float x0 = _s.TimeToX(l.start), x1 = _s.TimeToX(l.end);
                     p.BeginPath(); p.MoveTo(new Vector2(x0, 0)); p.LineTo(new Vector2(x1, 0)); p.LineTo(new Vector2(x1, 5)); p.LineTo(new Vector2(x0, 5)); p.ClosePath(); p.Fill();
                 }
-                p.fillColor = new Color(1f, 0.82f, 0.4f, 1f);
-                foreach (var m in a.data.markers)
+                for (int i = 0; i < a.data.markers.Length; i++)
                 {
-                    float x = _s.TimeToX(m.time);
-                    p.BeginPath(); p.MoveTo(new Vector2(x, r.height - 8)); p.LineTo(new Vector2(x + 4, r.height - 4)); p.LineTo(new Vector2(x, r.height)); p.LineTo(new Vector2(x - 4, r.height - 4)); p.ClosePath(); p.Fill();
+                    bool sel = i == _s.SelMarker;
+                    float x = _s.TimeToX(_s.MarkerTime(i));
+                    p.strokeColor = sel ? Color.white : new Color(1f, 0.82f, 0.4f, 0.9f);
+                    p.lineWidth = sel ? 2 : 1;
+                    p.BeginPath(); p.MoveTo(new Vector2(x, 16)); p.LineTo(new Vector2(x, r.height)); p.Stroke();
+                    p.fillColor = sel ? Color.white : new Color(1f, 0.82f, 0.4f, 1f);
+                    p.BeginPath(); p.MoveTo(new Vector2(x, 16)); p.LineTo(new Vector2(x + 5, 20)); p.LineTo(new Vector2(x, 24)); p.ClosePath(); p.Fill();
                 }
             }
             DrawPlayhead(p, _s, r.height);
@@ -418,10 +508,10 @@ namespace Sodd.Design.Editor
                     }
                 }
                 // markers (líneas punteadas)
-                p.strokeColor = new Color(1f, 0.82f, 0.4f, 0.5f); p.lineWidth = 1;
-                foreach (var m in d.markers)
+                for (int i = 0; i < d.markers.Length; i++)
                 {
-                    float x = _s.TimeToX(m.time);
+                    p.strokeColor = i == _s.SelMarker ? new Color(1f, 1f, 1f, 0.7f) : new Color(1f, 0.82f, 0.4f, 0.5f); p.lineWidth = 1;
+                    float x = _s.TimeToX(_s.MarkerTime(i));
                     for (float y = 0; y < d.tracks.Length * th; y += 8) { p.BeginPath(); p.MoveTo(new Vector2(x, y)); p.LineTo(new Vector2(x, y + 4)); p.Stroke(); }
                 }
             }

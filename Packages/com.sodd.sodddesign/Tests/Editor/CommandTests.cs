@@ -125,6 +125,40 @@ namespace Sodd.Design.Tests
         }
 
         [Test]
+        public void TracksAndMarkersMoveRenameAndRemove()
+        {
+            Assert.IsTrue(SoddCommands.CreateEvent(P).ok);
+            Assert.IsTrue(SoddCommands.AddTrack(P, "A").ok);
+            Assert.IsTrue(SoddCommands.AddTrack(P, "B").ok);
+            Assert.IsTrue(SoddCommands.AddTrack(P, "C").ok);
+            Assert.IsTrue(SoddCommands.MoveTrack(P, 0, 2).ok);
+            var t = Dom(P)["tracks"];
+            Assert.AreEqual("B", t[0]["name"].String);
+            Assert.AreEqual("C", t[1]["name"].String);
+            Assert.AreEqual("A", t[2]["name"].String);
+            Assert.IsFalse(SoddCommands.MoveTrack(P, 5, 0).ok);
+            Assert.IsTrue(SoddCommands.DuplicateTrack(P, 0).ok);
+            t = Dom(P)["tracks"];
+            Assert.AreEqual(4, t.Count);
+            Assert.AreEqual("B copia", t[1]["name"].String);
+
+            Assert.IsTrue(SoddCommands.AddMarker(P, "Hit", 0.25f).ok);
+            Assert.IsTrue(SoddCommands.AddMarker(P, "End", 1f).ok);
+            Assert.IsTrue(SoddCommands.MoveMarker(P, 0, 0.5f).ok);
+            Assert.IsTrue(SoddCommands.RenameMarker(P, 0, "Impacto").ok);
+            var m = Dom(P)["markers"];
+            Assert.AreEqual(0.5, m[0]["time"].Number, 1e-6);
+            Assert.AreEqual("Impacto", m[0]["name"].String);
+            Assert.IsTrue(SoddCommands.RemoveMarker(P, 1).ok);
+            Assert.AreEqual(1, Dom(P)["markers"].Count);
+            Assert.IsFalse(SoddCommands.MoveMarker(P, 3, 0f).ok);
+
+            Undo.PerformUndo();
+            Assert.AreEqual(2, Dom(P)["markers"].Count);
+            Assert.IsTrue(SoddCommands.Validate(P).ok);
+        }
+
+        [Test]
         public void LocalParameterAndCreateFromJson()
         {
             var r = SoddCommands.CreateEventFromJson("{\"path\":\"" + P + "\",\"description\":\"motor\",\"tracks\":[]}");

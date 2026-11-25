@@ -7,7 +7,7 @@ SoddDesign dentro de Unity.
 IA ──MCP stdio──► sodddesign-mcp (Node) ──HTTP JSON-RPC 127.0.0.1 + token──► Unity Editor (SoddBridge) ──► SoddCommands
 ```
 
-- El bridge del Editor arranca solo al abrir el proyecto (`Window > Sodd > AI Bridge > Start/Stop`).
+- El bridge del Editor arranca solo al abrir el proyecto (`Sodd > AI Bridge > Start/Stop`).
   Escucha **solo en 127.0.0.1** (puerto 47821, configurable con EditorPrefs `SoddBridge.Port`) y genera un token
   nuevo por sesión en `Library/SoddDesign/bridge.json`. Rechaza requests de navegadores y Hosts no locales.
 - Todo cambio pasa por `SoddCommands`: se valida, se guarda en el `.sodd.json` y se puede deshacer con Ctrl+Z.
@@ -20,7 +20,7 @@ IA ──MCP stdio──► sodddesign-mcp (Node) ──HTTP JSON-RPC 127.0.0.1 
 claude mcp add sodddesign -- node "<RUTA_PROYECTO>/Packages/com.sodd.sodddesign/Tools~/sodddesign-mcp/dist/index.js" --project "<RUTA_PROYECTO>"
 ```
 
-Atajo: en Unity, `Window > Sodd > AI Bridge > Copy Claude Code command` copia el comando exacto al portapapeles.
+Atajo: en Unity, `Sodd > AI Bridge > Copy Claude Code command` copia el comando exacto al portapapeles.
 
 Probar la conexión (con Unity abierto):
 ```bash

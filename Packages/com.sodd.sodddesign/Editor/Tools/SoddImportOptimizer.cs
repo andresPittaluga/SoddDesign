@@ -88,7 +88,7 @@ namespace Sodd.Design.Editor
             return n;
         }
 
-        [MenuItem("Window/Sodd/Optimize Audio Import Settings…")]
+        [MenuItem("Sodd/Optimize Audio Import Settings…", priority = 23)]
         public static void Run()
         {
             var plan = Plan();

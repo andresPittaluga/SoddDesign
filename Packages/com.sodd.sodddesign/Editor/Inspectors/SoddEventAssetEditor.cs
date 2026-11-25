@@ -38,7 +38,7 @@ namespace Sodd.Design.Editor
 
     internal static class SoddMenu
     {
-        public const string StudioMenu = "Window/Sodd/SoddDesign Studio";
+        public const string StudioMenu = "Sodd/SoddDesign Studio";
 
         [MenuItem("Assets/Sodd/Preview Event", true)]
         static bool CanPreview() => Selection.activeObject is SoddEventAsset;
@@ -46,10 +46,10 @@ namespace Sodd.Design.Editor
         [MenuItem("Assets/Sodd/Preview Event")]
         static void Preview() => SoddPreview.Play((SoddEventAsset)Selection.activeObject);
 
-        [MenuItem("Window/Sodd/Stop All Previews")]
+        [MenuItem("Sodd/Stop All Previews", priority = 20)]
         static void Stop() => SoddPreview.StopAll();
 
-        [MenuItem("Window/Sodd/Validate All Events")]
+        [MenuItem("Sodd/Validate All Events", priority = 21)]
         static void ValidateAll()
         {
             var r = SoddCommands.Validate();
@@ -57,7 +57,7 @@ namespace Sodd.Design.Editor
             else Debug.Log("[SoddDesign] Validación:\n" + r);
         }
 
-        [MenuItem("Window/Sodd/Dev/Create Demo Event (SoddCommands)")]
+        [MenuItem("Sodd/Dev/Create Demo Event (SoddCommands)", priority = 100)]
         static void Demo()
         {
             const string p = "demo/commands_demo";
@@ -79,7 +79,7 @@ namespace Sodd.Design.Editor
             SoddPreview.Play(a);
         }
 
-        [MenuItem("Window/Sodd/Rebuild Registry")]
+        [MenuItem("Sodd/Rebuild Registry", priority = 22)]
         static void Rebuild() { SoddProjectFiles.ClearCache(); SoddProjectFiles.RebuildRegistry(); Debug.Log("[SoddDesign] Registro reconstruido."); }
     }
 }

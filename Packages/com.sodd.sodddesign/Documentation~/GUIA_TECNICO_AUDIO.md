@@ -1,7 +1,7 @@
 # Guía para técnicos de audio (sin código)
 
 Esta guía es para quien diseña el sonido. No necesitás programar: todo se hace en **SoddDesign Studio**
-(`Window > Sodd > SoddDesign Studio`). El programador solo dispara eventos por nombre y te pasa valores del juego.
+(`Sodd > SoddDesign Studio`). El programador solo dispara eventos por nombre y te pasa valores del juego.
 
 ## Conceptos (en 1 minuto)
 - **Evento**: un sonido del juego ("salto", "música del nivel 1", "motor del auto"). Tiene un nombre con
@@ -19,28 +19,68 @@ Esta guía es para quien diseña el sonido. No necesitás programar: todo se hac
 - **Modulador**: algo que mueve una perilla automáticamente. Toda perilla numérica puede tener moduladores.
 - **Bus**: grupo de mezcla (Music, SFX, UI, Voice, Ambience). **Snapshot**: un "preset de mezcla" (ej. bajo el agua).
 
+## Dónde está todo: el menú `Sodd`
+Todo SoddDesign sale de su propio menú, **Sodd**, en la barra de arriba de Unity:
+
+| Menú | Para qué |
+|---|---|
+| `Sodd > SoddDesign Studio` | Editar eventos (la ventana principal) |
+| `Sodd > Mixer` | Faders de buses, mute/solo y snapshots |
+| `Sodd > Profiler` | Instancias y voces sonando en vivo |
+| `Sodd > Guía de uso` | Abre esta guía |
+| `Sodd > Atajos de Studio` | Abre el Studio con la tabla de atajos |
+| `Sodd > Validate All Events` / `Rebuild Registry` / `Optimize Audio Import Settings…` | Mantenimiento |
+| `Sodd > AI Bridge` | Conectar una IA (MCP) |
+
+En el Studio, el botón **?** (arriba a la derecha) muestra los atajos en cualquier momento.
+
 ## El Studio
 - **Izquierda**: todos los eventos. Buscador y tags. Doble click = escuchar. Click derecho = renombrar/duplicar/borrar.
 - **Centro**: timeline. Rueda = zoom; botón del medio o Alt+arrastrar = moverse. Arriba: regla con loops (barra
-  celeste) y markers (◆). Click derecho en la regla = agregar marker o loop.
+  celeste) y markers (banderitas amarillas). Click derecho en la regla = agregar marker o loop.
 - **Derecha**: Inspector de lo que tengas seleccionado (evento, track o región).
 - **Abajo**: parámetros (sliders en vivo), transporte (▶ ■) y medidor.
 
 ### Atajos
-| Tecla | Acción |
+| Tecla o gesto | Acción |
 |---|---|
 | Espacio | Play / Stop |
+| Esc | Stop y volver al inicio |
 | S | Cortar la región en el playhead |
-| D | Duplicar región |
-| Supr | Borrar |
+| D o Ctrl+D | Duplicar región |
+| Supr o Backspace | Borrar lo seleccionado (región, marker o track) |
 | F | Ajustar zoom al evento |
 | Ctrl+Z / Ctrl+Y | Deshacer / rehacer (todo se puede deshacer) |
-| Shift + arrastrar | Mover sin snap |
+| Shift + arrastrar | Mover sin snap (regiones, markers y playhead) |
 
-### Editar en el timeline
-- **Arrastrar** una región: moverla (también a otro track). **Bordes**: cambiar el largo.
+Los atajos se pueden cambiar en `Edit > Shortcuts > SoddDesign Studio`.
+
+### Regiones
+- **Arrastrar** una región: moverla en el tiempo o a otro track. **Bordes**: recortar el inicio o el final.
 - **Circulitos de arriba**: fade-in (izquierda) y fade-out (derecha).
 - **Arrastrar wavs** desde el Project: crea regiones (si soltás debajo del último track, crea uno nuevo).
+- **Click derecho**: dividir, duplicar o borrar.
+
+### Tracks
+- **Reordenar**: arrastrá el nombre del track hacia arriba o abajo. Una línea celeste marca dónde va a quedar.
+- **Click derecho en el nombre**: renombrar, subir, bajar, duplicar (con regiones y efectos) o borrar.
+- **Volumen rápido**: arrastrá el chip de dB del track hacia arriba o abajo (Shift = fino, doble click = 0 dB).
+- **M / S**: mute y solo.
+
+### Markers
+- **Crear**: click derecho en la regla → *Agregar marker*.
+- **Seleccionar**: click en la banderita. **Mover**: arrastrarla. **Renombrar**: doble click.
+- **Borrar**: seleccionarlo y Supr, o click derecho → *Borrar marker*.
+- El juego recibe cada marker como callback `OnMarker` con su nombre.
+
+### Perillas (como en FMOD)
+Volumen, pitch, pan y los parámetros de los efectos se editan con perillas:
+- **Arrastrar arriba/abajo** sobre la perilla o su nombre cambia el valor. Con **Shift**, el ajuste es fino.
+- **Rueda del mouse** encima: pasos chicos.
+- **Doble click en la perilla**: vuelve al valor por defecto.
+- **Doble click en el número**: escribís el valor exacto.
+- El cambio se guarda al soltar: cada arrastre es un solo paso de Ctrl+Z.
+- Los valores sin rango fijo (tiempos, distancias) siguen siendo campos de texto: arrastrá su nombre o escribí el número.
 
 ## Recetas
 **Pasos que no suenan repetidos**: región RandomClip con 4+ variaciones, "Evitar repetir" ✔. En el evento:

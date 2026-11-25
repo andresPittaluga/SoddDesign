@@ -165,15 +165,32 @@ namespace Sodd.Design.Editor
         static bool s_pending;
         public static event Action Changed;
 
-        internal static void ReimportEventsWithMissingClips()
+        const string MissingClip = "no se encontró el AudioClip '";
+
+        /// <summary>Reimporta los eventos que se importaron antes que sus AudioClips, cuando esos clips ya cargan.</summary>
+        internal static int ReimportEventsWithMissingClips()
         {
+            int n = 0;
             foreach (var a in SoddProjectFiles.AllEventAssets())
             {
-                bool missing = false;
-                foreach (var w in a.importWarnings) if (w.Contains("no se encontró el AudioClip")) { missing = true; break; }
-                if (missing) AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(a), ImportAssetOptions.ForceUpdate);
+                if (a == null || !a.importWarnings.Any(ClipNowAvailable)) continue;
+                AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(a), ImportAssetOptions.ForceUpdate);
+                n++;
             }
+            return n;
         }
+
+        internal static bool ClipNowAvailable(string warning)
+        {
+            int i = warning.IndexOf(MissingClip, StringComparison.Ordinal);
+            if (i < 0) return false;
+            int start = i + MissingClip.Length, end = warning.IndexOf('\'', start);
+            return end > start && AssetDatabase.LoadAssetAtPath<AudioClip>(warning.Substring(start, end - start)) != null;
+        }
+
+        // A domain reload drops pending delayCalls, which happens on a project's first open right after the audio imports.
+        [InitializeOnLoadMethod]
+        static void AfterDomainReload() => EditorApplication.delayCall += () => ReimportEventsWithMissingClips();
 
         static bool Relevant(string p) =>
             p.EndsWith(SoddProjectFiles.EventExt, StringComparison.OrdinalIgnoreCase) ||
@@ -189,7 +206,7 @@ namespace Sodd.Design.Editor
             // Primer import de un proyecto: los .sodd.json pueden importarse antes que sus AudioClips.
             // Si llegan audios nuevos, reimportar los eventos que quedaron con clips faltantes.
             if (imported.Any(IsAudio) || moved.Any(IsAudio))
-                EditorApplication.delayCall += ReimportEventsWithMissingClips;
+                EditorApplication.delayCall += () => ReimportEventsWithMissingClips();
             bool any = imported.Any(Relevant) || deleted.Any(Relevant) || moved.Any(Relevant) || movedFrom.Any(Relevant);
             if (!any) return;
             if (deleted.Any(Relevant) || moved.Any(Relevant)) SoddProjectFiles.ClearCache();

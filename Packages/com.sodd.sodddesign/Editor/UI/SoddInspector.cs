@@ -59,6 +59,33 @@ namespace Sodd.Design.Editor
             return Row(f);
         }
 
+        /// <summary>Valor acotado como perilla: se guarda al soltar.</summary>
+        VisualElement Knob(string label, float value, string ptr, string tooltip, float min, float max, float def, string unit = "")
+        {
+            var k = new SoddKnob(label, value, min, max, def, unit, tooltip);
+            k.Committed = v => Set(ptr, J(v));
+            return Row(k);
+        }
+
+        /// <summary>Rango y valor por defecto según la unidad ("dB", "st", o un rango literal "-1..1"). False = sin rango conocido.</summary>
+        internal static bool RangeForUnit(string unit, out float min, out float max, out float def)
+        {
+            min = max = def = 0f;
+            switch (unit)
+            {
+                case "dB": min = -80f; max = 10f; return true;
+                case "st": min = -24f; max = 24f; return true;
+            }
+            var parts = (unit ?? "").Split(new[] { ".." }, StringSplitOptions.None);
+            if (parts.Length == 2 && float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out min)
+                                  && float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out max) && max > min)
+            {
+                def = Mathf.Clamp(0f, min, max);
+                return true;
+            }
+            return false;
+        }
+
         VisualElement Int(string label, int value, string ptr, string tooltip)
         {
             var f = new IntegerField(label) { value = value, isDelayed = true, tooltip = tooltip };
@@ -97,13 +124,27 @@ namespace Sodd.Design.Editor
         }
 
         // ------------------------------------------------------------------ props modulables
-        VisualElement ModProp(string label, string ptr, SoddModProp prop, string unit, string tooltip, string paramForX = null)
+        VisualElement ModProp(string label, string ptr, SoddModProp prop, string unit, string tooltip, string paramForX = null, SoddEffectCatalog.ParamInfo range = null)
         {
             var box = new VisualElement();
             var row = new VisualElement(); row.AddToClassList("sd-prop");
-            var f = new FloatField($"{label} ({unit})") { value = prop.@base, isDelayed = true, tooltip = tooltip + (prop.HasModulators ? "\nValor base: los moduladores se suman a este valor." : "") };
-            f.RegisterValueChangedCallback(e => Set(ptr, J(e.newValue)));
-            row.Add(f);
+            string tip = tooltip + (prop.HasModulators ? "\nValor base: los moduladores se suman a este valor." : "");
+            float min, max, def;
+            bool bounded;
+            if (range != null) { min = range.min; max = range.max; def = range.defaultValue; bounded = max > min; }
+            else bounded = RangeForUnit(unit, out min, out max, out def);
+            if (bounded)
+            {
+                var k = new SoddKnob(label, prop.@base, min, max, def, unit, tip) { style = { flexGrow = 1 } };
+                k.Committed = v => Set(ptr, J(v));
+                row.Add(k);
+            }
+            else
+            {
+                var f = new FloatField($"{label} ({unit})") { value = prop.@base, isDelayed = true, tooltip = tip };
+                f.RegisterValueChangedCallback(e => Set(ptr, J(e.newValue)));
+                row.Add(f);
+            }
             bool open = s_openMods.Contains(_evt + ptr);
             var mb = new Button { text = prop.HasModulators ? "∿" + prop.modulators.Length : "＋", tooltip = prop.HasModulators ? "Ver/editar moduladores" : "Agregar modulador (Random, curva por parámetro, LFO, ADSR...)" };
             mb.AddToClassList("sd-mod-btn");
@@ -204,7 +245,7 @@ namespace Sodd.Design.Editor
                     card.Add(Enum("forma", m.shape, mp + "/shape", "Forma de onda"));
                     card.Add(Num("rate (Hz)", m.rate, mp + "/rate", "Ciclos por segundo"));
                     card.Add(Num($"depth ({unit})", m.depth, mp + "/depth", "Amplitud"));
-                    card.Add(Num("fase", m.phase, mp + "/phase", "Fase inicial 0..1"));
+                    card.Add(Knob("fase", m.phase, mp + "/phase", "Fase inicial 0..1", 0f, 1f, 0f));
                     break;
                 case SoddModulatorType.Envelope:
                     card.Add(Num("attack (s)", m.attack, mp + "/attack", "Subida")); card.Add(Num("hold (s)", m.hold, mp + "/hold", "Sostén"));
@@ -212,7 +253,7 @@ namespace Sodd.Design.Editor
                     break;
                 case SoddModulatorType.ADSR:
                     card.Add(Num("attack (s)", m.attack, mp + "/attack", "Subida")); card.Add(Num("decay (s)", m.decay, mp + "/decay", "Caída al sustain"));
-                    card.Add(Num("sustain", m.sustain, mp + "/sustain", "Nivel 0..1")); card.Add(Num("release (s)", m.release, mp + "/release", "Fade-out al detener"));
+                    card.Add(Knob("sustain", m.sustain, mp + "/sustain", "Nivel 0..1", 0f, 1f, 1f)); card.Add(Num("release (s)", m.release, mp + "/release", "Fade-out al detener"));
                     break;
             }
             return card;
@@ -247,12 +288,12 @@ namespace Sodd.Design.Editor
             if (d.is3D)
             {
                 var sp = d.spatial;
-                s3.Add(Num("Spatial blend", sp.spatialBlend, "/spatial/spatialBlend", "0 = 2D, 1 = 3D"));
+                s3.Add(Knob("Spatial blend", sp.spatialBlend, "/spatial/spatialBlend", "0 = 2D, 1 = 3D", 0f, 1f, 1f));
                 s3.Add(Num("Min distance", sp.minDistance, "/spatial/minDistance", "Hasta acá volumen completo"));
                 s3.Add(Num("Max distance", sp.maxDistance, "/spatial/maxDistance", "Desde acá no se oye/atenúa"));
                 s3.Add(Enum("Rolloff", sp.rolloff, "/spatial/rolloff", "Curva de atenuación"));
                 s3.Add(Num("Doppler", sp.doppler, "/spatial/doppler", "0 = sin doppler"));
-                s3.Add(Num("Spread", sp.spread, "/spatial/spread", "Apertura en grados"));
+                s3.Add(Knob("Spread", sp.spread, "/spatial/spread", "Apertura en grados", 0f, 360f, 0f, "°"));
             }
 
             var sv = Section(root, "Voces y red");
@@ -360,7 +401,7 @@ namespace Sodd.Design.Editor
                     for (int p = 0; p < info.parameters.Length && p < effect.parameters.Length; p++)
                     {
                         var pi = info.parameters[p];
-                        card.Add(ModProp(pi.name, $"{tp}/effects/{idx}/params/{pi.name}", effect.parameters[p].value, pi.unit, $"{pi.description} [{pi.min}..{pi.max}]"));
+                        card.Add(ModProp(pi.name, $"{tp}/effects/{idx}/params/{pi.name}", effect.parameters[p].value, pi.unit, $"{pi.description} [{pi.min}..{pi.max}]", null, pi));
                     }
                 fx.Add(card);
             }

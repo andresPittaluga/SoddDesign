@@ -109,7 +109,7 @@ AddEffect, AddMarker, AddLoopRegion, PreviewEvent, StopPreview, Validate.
 Todo con Undo, validación y resultado `{ ok, errors[], warnings[] }`.
 
 ## SoddDesign Studio (Editor UI) — tiene que verse y sentirse PRO
-- Ventana `Window > Sodd > SoddDesign Studio`. Tema oscuro propio vía USS con tokens
+- Ventana `Sodd > SoddDesign Studio`. Tema oscuro propio vía USS con tokens
   (colores, radios, espaciados, tipografía) en `SoddTheme.uss`.
 - Layout: navegador de eventos (árbol con búsqueda y tags) | timeline | inspector
   (propiedades + moduladores) | abajo: parámetros (sliders en vivo) + transporte + medidor.

@@ -16,6 +16,7 @@
             <ui:Button name="btn-validate" text="Validar" class="sd-btn" tooltip="Validar todos los eventos del proyecto" />
             <ui:Button name="btn-optimize" text="Optimizar" class="sd-btn" tooltip="Optimizar import settings de los AudioClips según su uso (load type, compresión, mono)" />
             <ui:Label name="bridge-status" text="IA: off" class="sd-status" tooltip="Servidor local para la IA (MCP)" />
+            <ui:Button name="btn-help" text="?" class="sd-btn sd-btn--icon" tooltip="Atajos y cómo se usa el Studio (Sodd > Guía de uso)" />
         </ui:VisualElement>
         <ui:VisualElement class="sd-main">
             <ui:VisualElement name="browser" class="sd-panel sd-browser">

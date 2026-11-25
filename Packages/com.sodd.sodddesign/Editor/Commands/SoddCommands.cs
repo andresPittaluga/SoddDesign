@@ -377,6 +377,37 @@ namespace Sodd.Design.Editor
 
         public static SoddResult RemoveTrack(string evt, int track) => Remove(evt, $"/tracks/{track}", "Borrar track");
 
+        /// <summary>Mueve un track a otra posición (to = índice final del track).</summary>
+        public static SoddResult MoveTrack(string evt, int from, int to)
+        {
+            return Edit(evt, "Mover track", dom =>
+            {
+                var r = new SoddResult();
+                var tracks = SoddJson.Resolve(dom, "/tracks");
+                if (tracks == null || !tracks.IsArray || from < 0 || from >= tracks.Count) return r.Error($"No existe el track {from}");
+                to = Mathf.Clamp(to, 0, tracks.Count - 1);
+                var t = tracks.Items[from];
+                tracks.Items.RemoveAt(from);
+                tracks.Items.Insert(to, t);
+                return r;
+            });
+        }
+
+        /// <summary>Duplica un track (con sus regiones y efectos) justo debajo del original.</summary>
+        public static SoddResult DuplicateTrack(string evt, int track)
+        {
+            return Edit(evt, "Duplicar track", dom =>
+            {
+                var r = new SoddResult();
+                var tracks = SoddJson.Resolve(dom, "/tracks");
+                if (tracks == null || !tracks.IsArray || track < 0 || track >= tracks.Count) return r.Error($"No existe el track {track}");
+                var copy = tracks.Items[track].Clone();
+                copy.Set("name", (copy["name"]?.AsString() ?? "Track") + " copia");
+                tracks.Items.Insert(track + 1, copy);
+                return r;
+            });
+        }
+
         static SoddResult Remove(string evt, string pointer, string undo) => Edit(evt, undo, dom =>
         {
             var r = new SoddResult();
@@ -623,6 +654,32 @@ namespace Sodd.Design.Editor
                 return null;
             });
         }
+
+        public static SoddResult MoveMarker(string evt, int marker, float time)
+        {
+            return Edit(evt, "Mover marker", dom =>
+            {
+                var r = new SoddResult();
+                var m = SoddJson.Resolve(dom, $"/markers/{marker}");
+                if (m == null || !m.IsObject) return r.Error($"No existe el marker {marker}");
+                m.Set("time", Math.Round(Mathf.Max(0, time), 4));
+                return r;
+            });
+        }
+
+        public static SoddResult RenameMarker(string evt, int marker, string name)
+        {
+            return Edit(evt, "Renombrar marker", dom =>
+            {
+                var r = new SoddResult();
+                var m = SoddJson.Resolve(dom, $"/markers/{marker}");
+                if (m == null || !m.IsObject) return r.Error($"No existe el marker {marker}");
+                m.Set("name", string.IsNullOrWhiteSpace(name) ? "Marker" : name.Trim());
+                return r;
+            });
+        }
+
+        public static SoddResult RemoveMarker(string evt, int marker) => Remove(evt, $"/markers/{marker}", "Borrar marker");
 
         public static SoddResult AddLoopRegion(string evt, float start, float end, string exitWhenJson = null, string name = "Loop")
         {

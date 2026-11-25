@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.9] - 2026-11-24
+- Menú propio `Sodd` en la barra de Unity (Studio, Mixer, Profiler, herramientas, Guía de uso y Atajos); `Window/Sodd` ya no existe.
+- Tracks: arrastrar el nombre los reordena; click derecho Subir/Bajar/Duplicar; el chip de dB se arrastra para cambiar el volumen.
+- Markers en la regla: click selecciona, arrastrar mueve (Shift = sin snap), doble click renombra, Supr borra.
+- Perillas estilo FMOD para volumen, pitch, pan y parámetros de efectos: arrastre (Shift = fino), rueda, doble click = default, doble click en el número = escribir. Un paso de undo por gesto.
+- Comandos `MoveTrack`, `DuplicateTrack`, `MoveMarker`, `RenameMarker`, `RemoveMarker` (también en el bridge MCP).
+- Botón ? en el Studio con la tabla de atajos; guía actualizada.
+- Los eventos importados antes que sus AudioClips se reimportan solos también después de una recarga de dominio (primer import de un proyecto).
+
 ## [0.1.8] - 2026-11-24
 - `SoddRegistry` y cada filtro DSP viven en un archivo con su nombre: en un build el registro cargaba sin script y ningún evento sonaba.
 

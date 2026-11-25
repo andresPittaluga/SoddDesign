@@ -10,7 +10,7 @@ namespace Sodd.Design.Editor
     /// <summary>Mixer: faders de buses (en vivo, preview o Play Mode), mute/solo, medidores y snapshots.</summary>
     public sealed class SoddMixerWindow : EditorWindow
     {
-        [MenuItem("Window/Sodd/Mixer", priority = 1)]
+        [MenuItem("Sodd/Mixer", priority = 1)]
         public static void Open()
         {
             var w = GetWindow<SoddMixerWindow>();
@@ -124,7 +124,7 @@ namespace Sodd.Design.Editor
     /// <summary>Profiler: instancias vivas, voces reales/virtuales, robos.</summary>
     public sealed class SoddProfilerWindow : EditorWindow
     {
-        [MenuItem("Window/Sodd/Profiler", priority = 2)]
+        [MenuItem("Sodd/Profiler", priority = 2)]
         public static void Open()
         {
             var w = GetWindow<SoddProfilerWindow>();

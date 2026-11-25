@@ -143,6 +143,7 @@ namespace Sodd.Design.Editor
                 if (!r.ok || r.warnings.Count > 0) Debug.Log("[SoddDesign] Validación:\n" + r);
             };
             _root.Q<Button>("btn-optimize").clicked += SoddImportOptimizer.Run;
+            _root.Q<Button>("btn-help").clicked += () => ShowHelp(_help == null);
             _bridge.RegisterCallback<ClickEvent>(_ => { SoddStudioHooks.ToggleBridge?.Invoke(); UpdateBridge(); });
 
             // browser
@@ -161,6 +162,9 @@ namespace Sodd.Design.Editor
             _ruler = new SoddRuler(_s);
             _rulerHost.Add(_ruler);
             _ruler.ContextRequested = (t, pos) => TimelineContext(-1, -1, t, pos);
+            _ruler.MarkerMoved = (i, t) => Report(SoddCommands.MoveMarker(_selectedId, i, t));
+            _ruler.MarkerRenameRequested = RenameMarker;
+            _ruler.MarkerContextRequested = MarkerContext;
             _canvas = new SoddTimelineCanvas(_s);
             _canvasHost.Add(_canvas);
             _canvas.CommitMove = (t, r, start, len, nt) =>
@@ -190,6 +194,22 @@ namespace Sodd.Design.Editor
             _root.schedule.Execute(Live).Every(33);
             _root.schedule.Execute(UpdateBridge).Every(1000);
             RefreshAll();
+            if (_helpPending) ShowHelp(true);
+        }
+
+        VisualElement _help;
+        bool _helpPending;
+
+        /// <summary>Muestra u oculta el panel de atajos.</summary>
+        public void ShowHelp(bool show)
+        {
+            if (_root == null) { _helpPending = show; return; }
+            _helpPending = false;
+            _help?.RemoveFromHierarchy();
+            _help = null;
+            if (!show) return;
+            _help = SoddHelp.BuildPanel(() => ShowHelp(false));
+            _root.Add(_help);
         }
 
         bool HasEvent => _s.Asset != null && !string.IsNullOrEmpty(_selectedId);
@@ -230,7 +250,10 @@ namespace Sodd.Design.Editor
             {
                 if (_s.SelTrack >= sel.data.tracks.Length) { _s.SelTrack = -1; _s.SelRegion = -1; }
                 else if (_s.SelTrack >= 0 && _s.SelRegion >= sel.data.tracks[_s.SelTrack].regions.Length) _s.SelRegion = -1;
+                if (_s.SelMarker >= sel.data.markers.Length) _s.SelMarker = -1;
             }
+            else _s.SelMarker = -1;
+            _s.DragMarker = -1;
             BuildTags();
             BuildRows();
             BuildHeader();
@@ -378,7 +401,7 @@ namespace Sodd.Design.Editor
             }
             if (row.key == _selectedId) return;
             _selectedId = row.key;
-            _s.SelTrack = _s.SelRegion = -1;
+            _s.SelTrack = _s.SelRegion = _s.SelMarker = -1;
             _s.Playhead = 0;
             RefreshAll();
             ZoomToFit();
@@ -417,13 +440,22 @@ namespace Sodd.Design.Editor
                 }
                 Chip("M", "Mute", tr.mute, "sd-chip--mute", () => Report(SoddCommands.SetProperty(_selectedId, $"/tracks/{ti}/mute", tr.mute ? "false" : "true")));
                 Chip("S", "Solo", tr.solo, "sd-chip--solo", () => Report(SoddCommands.SetProperty(_selectedId, $"/tracks/{ti}/solo", tr.solo ? "false" : "true")));
-                var vol = new Label((tr.volume.@base >= 0 ? "+" : "") + tr.volume.@base.ToString("0.#") + " dB" + (tr.volume.HasModulators ? " ∿" : "")); vol.AddToClassList("sd-chip"); chips.Add(vol);
+                var vol = new Label(VolumeText(tr.volume.@base, tr.volume.HasModulators)); vol.AddToClassList("sd-chip"); vol.AddToClassList("sd-chip--drag"); chips.Add(vol);
+                DraggableVolume(vol, ti, tr.volume.@base, tr.volume.HasModulators);
                 if (tr.effects.Length > 0) { var fx = new Label("FX " + tr.effects.Length) { tooltip = string.Join(", ", tr.effects.Select(f => f.type)) }; fx.AddToClassList("sd-chip"); chips.Add(fx); }
                 h.Add(chips);
-                h.RegisterCallback<PointerDownEvent>(e => { if (e.button == 0) _s.Select(ti, -1); });
+                int count = a.data.tracks.Length;
+                h.tooltip = "Click: seleccionar · Arrastrar arriba/abajo: reordenar · Click derecho: más opciones";
+                h.RegisterCallback<PointerDownEvent>(e => { if (e.button != 0) return; _s.Select(ti, -1); BeginTrackDrag(h, ti, e); });
+                h.RegisterCallback<PointerMoveEvent>(e => DragTrack(h, e));
+                h.RegisterCallback<PointerUpEvent>(e => EndTrackDrag(h, e));
                 h.AddManipulator(new ContextualMenuManipulator(e =>
                 {
                     e.menu.AppendAction("Renombrar…", _ => SoddPrompt.Show("Renombrar track", "Nombre", tr.name, v => Report(SoddCommands.SetProperty(_selectedId, $"/tracks/{ti}/name", Sodd.Design.Json.SoddJson.Write(Sodd.Design.Json.JsonNode.From(v), false)))));
+                    e.menu.AppendAction("Subir", _ => MoveTrackTo(ti, ti - 1), ti > 0 ? DropdownMenuAction.Status.Normal : DropdownMenuAction.Status.Disabled);
+                    e.menu.AppendAction("Bajar", _ => MoveTrackTo(ti, ti + 1), ti < count - 1 ? DropdownMenuAction.Status.Normal : DropdownMenuAction.Status.Disabled);
+                    e.menu.AppendAction("Duplicar track", _ => Report(SoddCommands.DuplicateTrack(_selectedId, ti)));
+                    e.menu.AppendSeparator();
                     e.menu.AppendAction("Borrar track", _ => Report(SoddCommands.RemoveTrack(_selectedId, ti)));
                 }));
                 _headers.Add(h);
@@ -431,6 +463,117 @@ namespace Sodd.Design.Editor
             var add = new Button(() => { if (HasEvent) Report(SoddCommands.AddTrack(_selectedId, "Track " + (a.data.tracks.Length + 1))); }) { text = "＋ Track", tooltip = "Agregar track (o soltá clips en el timeline)" };
             add.AddToClassList("sd-btn"); add.style.marginTop = 8; add.style.marginLeft = 8; add.style.alignSelf = Align.FlexStart;
             _headers.Add(add);
+        }
+
+        static string VolumeText(float db, bool modulated) => (db >= 0 ? "+" : "") + db.ToString("0.#") + " dB" + (modulated ? " ∿" : "");
+
+        /// <summary>Chip de volumen del track: arrastrar arriba/abajo cambia los dB (Shift = fino), doble click = 0 dB; se guarda al soltar.</summary>
+        void DraggableVolume(Label chip, int track, float start, bool modulated)
+        {
+            float value = start, downY = 0f;
+            bool moved = false;
+            string ptr = $"/tracks/{track}/volume";
+            chip.tooltip = "Volumen del track: arrastrá arriba/abajo (Shift = fino) · doble click = 0 dB";
+            chip.RegisterCallback<PointerDownEvent>(e =>
+            {
+                if (e.button != 0) return;
+                e.StopPropagation();
+                if (e.clickCount == 2) { Report(SoddCommands.SetProperty(_selectedId, ptr, "0")); return; }
+                _s.Select(track, -1);
+                downY = e.position.y; moved = false; value = start;
+                chip.CapturePointer(e.pointerId);
+            });
+            chip.RegisterCallback<PointerMoveEvent>(e =>
+            {
+                if (!chip.HasPointerCapture(e.pointerId)) return;
+                float dy = downY - e.position.y;
+                if (!moved && Mathf.Abs(dy) < 2f) return;
+                moved = true;
+                value = Mathf.Clamp(start + dy * (e.shiftKey ? 0.025f : 0.25f), -80f, 10f);
+                chip.text = VolumeText(value, modulated);
+            });
+            chip.RegisterCallback<PointerUpEvent>(e =>
+            {
+                if (!chip.HasPointerCapture(e.pointerId)) return;
+                chip.ReleasePointer(e.pointerId);
+                e.StopPropagation();
+                if (moved) Report(SoddCommands.SetProperty(_selectedId, ptr, Sodd.Design.Json.SoddJson.FormatNumber((float)Math.Round(value, 2))));
+            });
+        }
+
+        // ---- reordenar tracks arrastrando el header
+        int _dragTrack = -1, _dropIndex = -1;
+        float _dragStartY;
+        bool _trackDragging;
+        VisualElement _dropLine;
+
+        void BeginTrackDrag(VisualElement h, int track, PointerDownEvent e)
+        {
+            if (e.target is Button) return;
+            _dragTrack = track; _dropIndex = -1; _trackDragging = false; _dragStartY = e.position.y;
+            h.CapturePointer(e.pointerId);
+        }
+
+        void DragTrack(VisualElement h, PointerMoveEvent e)
+        {
+            if (_dragTrack < 0 || !h.HasPointerCapture(e.pointerId)) return;
+            if (!_trackDragging)
+            {
+                if (Mathf.Abs(e.position.y - _dragStartY) < 5f) return;
+                _trackDragging = true;
+                h.AddToClassList("sd-thead--drag");
+            }
+            var heads = _headers.Children().Where(c => c.ClassListContains("sd-thead")).ToList();
+            if (heads.Count == 0) return;
+            float y = _headers.WorldToLocal(e.position).y;
+            int idx = heads.Count;
+            float lineY = heads[heads.Count - 1].layout.yMax;
+            for (int i = 0; i < heads.Count; i++)
+                if (y < heads[i].layout.center.y) { idx = i; lineY = heads[i].layout.yMin; break; }
+            _dropIndex = idx;
+            if (_dropLine == null) { _dropLine = new VisualElement { pickingMode = PickingMode.Ignore }; _dropLine.AddToClassList("sd-thead-drop"); }
+            if (_dropLine.parent != _headers) _headers.Add(_dropLine);
+            _dropLine.style.top = lineY - 1;
+        }
+
+        void EndTrackDrag(VisualElement h, PointerUpEvent e)
+        {
+            if (!h.HasPointerCapture(e.pointerId)) return;
+            h.ReleasePointer(e.pointerId);
+            h.RemoveFromClassList("sd-thead--drag");
+            _dropLine?.RemoveFromHierarchy();
+            int from = _dragTrack, drop = _dropIndex;
+            bool moved = _trackDragging;
+            _dragTrack = _dropIndex = -1; _trackDragging = false;
+            if (!moved || drop < 0) return;
+            int to = drop > from ? drop - 1 : drop;
+            if (to != from) MoveTrackTo(from, to);
+        }
+
+        void MoveTrackTo(int from, int to)
+        {
+            var r = SoddCommands.MoveTrack(_selectedId, from, to);
+            Report(r);
+            if (r.ok) { _s.SelTrack = Mathf.Clamp(to, 0, _s.Asset.data.tracks.Length - 1); _s.SelRegion = -1; }
+        }
+
+        // ---- markers
+        void RenameMarker(int i)
+        {
+            if (!HasEvent || i < 0 || i >= _s.Asset.data.markers.Length) return;
+            SoddPrompt.Show("Renombrar marker", "Nombre", _s.Asset.data.markers[i].name, v => Report(SoddCommands.RenameMarker(_selectedId, i, v)));
+        }
+
+        void MarkerContext(int i, Vector2 screenPos)
+        {
+            if (!HasEvent) return;
+            var menu = new GenericDropdownMenu();
+            menu.AddItem("Renombrar… (doble click)", false, () => RenameMarker(i));
+            menu.AddItem("Llevar el playhead acá", false, () => { _s.Playhead = _s.Asset.data.markers[i].time; _s.NotifyChanged(); });
+            menu.AddSeparator("");
+            menu.AddItem("Borrar marker (Supr)", false, () => { Report(SoddCommands.RemoveMarker(_selectedId, i)); _s.SelMarker = -1; });
+            var local = rootVisualElement.WorldToLocal(screenPos);
+            menu.DropDown(new Rect(local, Vector2.one), rootVisualElement, default(DropdownMenuSizeMode));
         }
 
         void BuildTrackHeadersSelection()
@@ -673,7 +816,8 @@ namespace Sodd.Design.Editor
         void DeleteSelection()
         {
             int t = _s.SelTrack, r = _s.SelRegion;
-            if (t >= 0 && r >= 0) { Report(SoddCommands.RemoveRegion(_selectedId, t, r)); _s.SelRegion = -1; }
+            if (_s.SelMarker >= 0) { Report(SoddCommands.RemoveMarker(_selectedId, _s.SelMarker)); _s.SelMarker = -1; }
+            else if (t >= 0 && r >= 0) { Report(SoddCommands.RemoveRegion(_selectedId, t, r)); _s.SelRegion = -1; }
             else if (t >= 0 && EditorUtility.DisplayDialog("Borrar track", "¿Borrar el track seleccionado?", "Borrar", "Cancelar"))
                 Report(SoddCommands.RemoveTrack(_selectedId, t));
         }

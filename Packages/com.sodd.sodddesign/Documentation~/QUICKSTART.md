@@ -6,7 +6,7 @@ Agregá el paquete (git URL o carpeta en `Packages/`). Al abrir Unity se crea, s
 `sodd.parameters.json` (podés copiarlos del sample *Basic*).
 
 ## 2. Primer evento (sin código)
-1. `Window > Sodd > SoddDesign Studio` → **＋ Evento** → `sfx/player/jump`.
+1. `Sodd > SoddDesign Studio` → **＋ Evento** → `sfx/player/jump`.
 2. Arrastrá un `.wav` desde el Project al timeline → se crea un track con una región.
 3. Click en el track → Inspector → Pitch → **＋** → *Random* (min −1, max 1). Cada salto suena distinto.
 4. **Espacio** para escuchar (no hace falta Play Mode).
@@ -51,12 +51,12 @@ SoddAudio.Net.PlayOneShot(jump, transform, new SoddNetParams().Add("Health", hp)
 El evento decide (`networkMode`): Local / Broadcast / OwnerOnly. Ver `Samples~/NetcodeDemo`.
 
 ## 8. IA
-`Window > Sodd > AI Bridge > Copy Claude Code command` → pegalo en una terminal. Después pedile a Claude cosas
+`Sodd > AI Bridge > Copy Claude Code command` → pegalo en una terminal. Después pedile a Claude cosas
 como "creá un sonido de moneda que suba de tono y hacémelo escuchar".
 
 ## 9. Antes de publicar
-- `Window > Sodd > Validate All Events`.
-- `Window > Sodd > Optimize Audio Import Settings…` (o botón **Optimizar** en el Studio).
+- `Sodd > Validate All Events`.
+- `Sodd > Optimize Audio Import Settings…` (o botón **Optimizar** en el Studio).
 - Si tenés muchos eventos por nivel: `Create > Sodd > Sound Bank` + `SoddBankLoader` o Addressables.
 
 ## Referencia rápida de la API

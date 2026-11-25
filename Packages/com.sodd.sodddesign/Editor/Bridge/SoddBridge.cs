@@ -53,11 +53,11 @@ namespace Sodd.Design.Editor
             if (Enabled && !Application.isBatchMode) EditorApplication.delayCall += Start;
         }
 
-        [MenuItem("Window/Sodd/AI Bridge/Start")]
+        [MenuItem("Sodd/AI Bridge/Start", priority = 60)]
         static void MenuStart() => Enabled = true;
-        [MenuItem("Window/Sodd/AI Bridge/Stop")]
+        [MenuItem("Sodd/AI Bridge/Stop", priority = 61)]
         static void MenuStop() => Enabled = false;
-        [MenuItem("Window/Sodd/AI Bridge/Copy Claude Code command")]
+        [MenuItem("Sodd/AI Bridge/Copy Claude Code command", priority = 62)]
         static void MenuCopy()
         {
             string js = Path.GetFullPath("Packages/com.sodd.sodddesign/Tools~/sodddesign-mcp/dist/index.js").Replace('\\', '/');
@@ -251,7 +251,7 @@ namespace Sodd.Design.Editor
         public static readonly string[] Methods =
         {
             "ping", "list_events", "get_event", "create_event", "edit_event", "set_property", "delete_event", "move_event",
-            "add_track", "add_region", "add_effect", "add_marker", "add_loop_region", "add_modulator", "remove_modulator",
+            "add_track", "move_track", "duplicate_track", "add_region", "add_effect", "add_marker", "move_marker", "rename_marker", "remove_marker", "add_loop_region", "add_modulator", "remove_modulator",
             "list_parameters", "add_parameter", "list_audio_clips", "list_effects", "get_settings", "edit_settings",
             "preview_event", "stop_preview", "validate", "get_schema", "get_ai_guide", "open_in_studio",
         };
@@ -278,9 +278,14 @@ namespace Sodd.Design.Editor
                 case "delete_event": return SoddCommands.DeleteEvent(ev);
                 case "move_event": return SoddCommands.MoveEvent(ev, S(p, "newPath"));
                 case "add_track": return SoddCommands.AddTrack(ev, S(p, "name"), S(p, "type", "SFX"));
+                case "move_track": return SoddCommands.MoveTrack(ev, I(p, "from"), I(p, "to"));
+                case "duplicate_track": return SoddCommands.DuplicateTrack(ev, I(p, "track"));
                 case "add_region": return SoddCommands.AddRegion(ev, I(p, "track"), F(p, "start"), F(p, "length", 1), RawJson(p, "instrument"), S(p, "name"));
                 case "add_effect": return SoddCommands.AddEffect(ev, I(p, "track"), Raw(p, "effect"));
                 case "add_marker": return SoddCommands.AddMarker(ev, S(p, "name"), F(p, "time"));
+                case "move_marker": return SoddCommands.MoveMarker(ev, I(p, "index"), F(p, "time"));
+                case "rename_marker": return SoddCommands.RenameMarker(ev, I(p, "index"), S(p, "name"));
+                case "remove_marker": return SoddCommands.RemoveMarker(ev, I(p, "index"));
                 case "add_loop_region": return SoddCommands.AddLoopRegion(ev, F(p, "start"), F(p, "end"), RawJson(p, "exitWhen"), S(p, "name", "Loop"));
                 case "add_modulator": return SoddCommands.AddModulator(ev, S(p, "pointer"), RawJson(p, "modulator"));
                 case "remove_modulator": return SoddCommands.RemoveModulator(ev, S(p, "pointer"), I(p, "index"));

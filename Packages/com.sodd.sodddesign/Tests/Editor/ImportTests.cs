@@ -28,6 +28,15 @@ namespace Sodd.Design.Tests
         }
 
         [Test]
+        public void EventsImportedBeforeTheirClipsHealOnReimport()
+        {
+            SoddAssetPostprocessor.ReimportEventsWithMissingClips();
+            foreach (var a in SoddProjectFiles.AllEventAssets())
+                foreach (var w in a.importWarnings)
+                    Assert.IsFalse(SoddAssetPostprocessor.ClipNowAvailable(w), $"{a.Path}: {w}");
+        }
+
+        [Test]
         public void RegistryFindsEventsByPathAndId()
         {
             var reg = SoddProjectFiles.RebuildRegistry();

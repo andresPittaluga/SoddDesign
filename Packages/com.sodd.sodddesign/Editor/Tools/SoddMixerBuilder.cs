@@ -38,7 +38,7 @@ namespace Sodd.Design.Editor
         static void SetProp(object target, string prop, object value) =>
             target.GetType().GetProperty(prop, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).SetValue(target, value);
 
-        [MenuItem("Window/Sodd/Dev/Rebuild SoddMixer (package)")]
+        [MenuItem("Sodd/Dev/Rebuild SoddMixer (package)", priority = 101)]
         public static void Build()
         {
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(MixerPath));

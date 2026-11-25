@@ -36681,7 +36681,7 @@ function readConfig() {
   if (!PROJECT) throw new Error("No encontr\xE9 el proyecto Unity. Pas\xE1 --project <ruta> o defin\xED SODD_PROJECT.");
   const file2 = join(PROJECT, "Library", "SoddDesign", "bridge.json");
   if (!existsSync(file2))
-    throw new Error(`El bridge de SoddDesign no est\xE1 activo (falta ${file2}). Abr\xED Unity con el proyecto; el bridge arranca solo, o us\xE1 Window > Sodd > AI Bridge > Start.`);
+    throw new Error(`El bridge de SoddDesign no est\xE1 activo (falta ${file2}). Abr\xED Unity con el proyecto; el bridge arranca solo, o us\xE1 Sodd > AI Bridge > Start.`);
   return JSON.parse(readFileSync(file2, "utf8"));
 }
 var nextId = 1;
@@ -36775,6 +36775,11 @@ tool("add_effect", "Agrega un efecto a un track: 'LowPass' o {type:'LowPass',par
   effect: json2
 });
 tool("add_marker", "Agrega un marker (llega al juego como callback OnMarker).", { event: ev, name: external_exports.string(), time: external_exports.number() });
+tool("move_marker", "Mueve un marker (index = posición en la lista markers) a otro tiempo en segundos.", { event: ev, index: external_exports.number().int(), time: external_exports.number() });
+tool("rename_marker", "Renombra un marker por índice.", { event: ev, index: external_exports.number().int(), name: external_exports.string() });
+tool("remove_marker", "Borra un marker por índice.", { event: ev, index: external_exports.number().int() });
+tool("move_track", "Mueve un track a otra posición (from y to son índices; to es la posición final).", { event: ev, from: external_exports.number().int(), to: external_exports.number().int() });
+tool("duplicate_track", "Duplica un track con sus regiones y efectos, justo debajo del original.", { event: ev, track: external_exports.number().int() });
 tool("add_loop_region", "Agrega un loop. exitWhen opcional: {parameter:'Intensity',op:'Greater',value:0.9}.", {
   event: ev,
   start: external_exports.number(),

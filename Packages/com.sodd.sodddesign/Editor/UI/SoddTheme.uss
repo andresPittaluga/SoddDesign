@@ -88,11 +88,14 @@
 /* ---------- cabecera de evento + timeline ---------- */
 .sd-ehead { flex-direction: row; align-items: center; padding: var(--sd-s2) var(--sd-s3); background-color: var(--sd-bg1); border-bottom-width: 1px; border-color: var(--sd-line); flex-shrink: 0; }
 .sd-ehead-title { font-size: 15px; -unity-font-style: bold; margin-right: var(--sd-s3); }
-.sd-ruler-row { flex-direction: row; height: 26px; flex-shrink: 0; background-color: var(--sd-bg1); border-bottom-width: 1px; border-color: var(--sd-line); }
+.sd-ruler-row { flex-direction: row; height: 34px; flex-shrink: 0; background-color: var(--sd-bg1); border-bottom-width: 1px; border-color: var(--sd-line); }
 .sd-ruler-corner { width: 170px; flex-shrink: 0; border-right-width: 1px; border-color: var(--sd-line); justify-content: center; padding-left: 8px; color: var(--sd-dim); font-size: 10px; }
 .sd-ruler { flex-grow: 1; overflow: hidden; }
-.sd-ruler-label { position: absolute; top: 6px; font-size: 9px; color: var(--sd-dim); }
-.sd-marker-label { position: absolute; top: 13px; font-size: 9px; color: var(--sd-warn); }
+.sd-ruler-label { position: absolute; top: 2px; font-size: 9px; color: var(--sd-dim); }
+.sd-marker-label { position: absolute; top: 16px; font-size: 9px; color: var(--sd-warn); }
+.sd-marker-label--sel { color: #ffffff; -unity-font-style: bold; }
+.sd-thead-drop { position: absolute; left: 0; right: 0; height: 2px; background-color: #5ab8ff; }
+.sd-thead--drag { opacity: 0.6; }
 .sd-tracks-scroll { flex-grow: 1; }
 .sd-tracks-row { flex-direction: row; }
 .sd-track-headers { width: 170px; flex-shrink: 0; }
@@ -152,3 +155,17 @@
 .sd-fader { height: 160px; }
 .sd-stat { padding: 4px 10px; margin: 4px; background-color: var(--sd-bg2); border-radius: var(--sd-radius); }
 .sd-stat-value { font-size: 18px; -unity-font-style: bold; color: var(--sd-accent); }
+
+/* Perillas estilo FMOD */
+.sd-knob-row { flex-direction: row; align-items: center; min-height: 26px; }
+.sd-knob-label { flex-grow: 1; color: var(--sd-dim); font-size: 11px; cursor: resize-vertical; }
+.sd-knob { width: 24px; height: 24px; flex-shrink: 0; margin: 0 6px; cursor: resize-vertical; }
+.sd-knob-value { width: 72px; -unity-text-align: middle-right; font-size: 11px; color: #e6e9ef; }
+.sd-knob-edit { width: 72px; margin: 0; }
+.sd-chip--drag { cursor: resize-vertical; }
+
+/* Panel de ayuda */
+.sd-help-panel { position: absolute; right: 12px; top: 44px; width: 430px; max-height: 80%; padding: 10px; background-color: var(--sd-bg1); border-width: 1px; border-color: var(--sd-line); border-radius: 6px; }
+.sd-help-row { flex-direction: row; padding: 3px 0; border-bottom-width: 1px; border-color: var(--sd-line); }
+.sd-help-keys { width: 170px; flex-shrink: 0; -unity-font-style: bold; color: #e6e9ef; white-space: normal; }
+.sd-help-action { flex-grow: 1; flex-shrink: 1; color: var(--sd-dim); white-space: normal; }
