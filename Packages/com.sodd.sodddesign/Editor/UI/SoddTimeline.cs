@@ -10,7 +10,7 @@ namespace Sodd.Design.Editor
     /// <summary>Estado compartido del timeline (zoom, scroll, selección, playhead).</summary>
     public sealed class SoddTimelineState
     {
-        public const float TrackHeight = 64f;
+        public const float DefaultTrackHeight = 64f, MinTrackHeight = 40f, MaxTrackHeight = 240f;
         public float PixelsPerSecond = 120f;
         public float Offset; // segundos visibles a la izquierda
         public float Snap = 0.05f;
@@ -34,6 +34,73 @@ namespace Sodd.Design.Editor
         public void Select(int track, int region) { SelTrack = track; SelRegion = region; SelMarker = -1; SelectionChanged?.Invoke(); Changed?.Invoke(); }
         public void SelectMarker(int marker) { SelTrack = -1; SelRegion = -1; SelMarker = marker; SelectionChanged?.Invoke(); Changed?.Invoke(); }
         public float MarkerTime(int i) => i == DragMarker ? DragMarkerTime : Asset.data.markers[i].time;
+
+        /// <summary>Loop que se está arrastrando en la regla (-1 = ninguno) y sus límites provisorios.</summary>
+        public int DragLoop = -1;
+        public float DragLoopStart, DragLoopEnd;
+        public float LoopStart(int i) => i == DragLoop ? DragLoopStart : Asset.data.loopRegions[i].start;
+        public float LoopEnd(int i) => i == DragLoop ? DragLoopEnd : Asset.data.loopRegions[i].end;
+
+        // ---- alto de cada track: preferencia de vista por evento (EditorPrefs), no se guarda en el .sodd.json
+        readonly List<float> _heights = new List<float>();
+        string _heightsFor;
+        const string HeightsPrefKey = "SoddDesign.TrackHeights.";
+
+        int TrackCount => Asset != null && Asset.data != null ? Asset.data.tracks.Length : 0;
+        public float TrackHeight(int t) => t >= 0 && t < _heights.Count ? _heights[t] : DefaultTrackHeight;
+        public float TrackTop(int t) { float y = 0; for (int k = 0; k < t; k++) y += TrackHeight(k); return y; }
+        public float TracksHeight => TrackTop(TrackCount);
+
+        /// <summary>Track bajo la coordenada y (puede devolver TrackCount o más si está debajo del último).</summary>
+        public int TrackAt(float y)
+        {
+            if (y < 0) return -1;
+            int n = TrackCount;
+            float top = 0;
+            for (int t = 0; t < n; t++) { top += TrackHeight(t); if (y < top) return t; }
+            return n + (int)((y - top) / DefaultTrackHeight);
+        }
+
+        public void SetTrackHeight(int t, float h, bool save)
+        {
+            if (t < 0) return;
+            while (_heights.Count <= t) _heights.Add(DefaultTrackHeight);
+            _heights[t] = Mathf.Clamp(Mathf.Round(h), MinTrackHeight, MaxTrackHeight);
+            if (save) SaveHeights();
+            NotifyChanged();
+        }
+
+        /// <summary>Al mover un track, su alto viaja con él.</summary>
+        public void MoveTrackHeight(int from, int to)
+        {
+            int n = Mathf.Max(TrackCount, Mathf.Max(from, to) + 1);
+            while (_heights.Count < n) _heights.Add(DefaultTrackHeight);
+            float h = _heights[from];
+            _heights.RemoveAt(from);
+            _heights.Insert(Mathf.Clamp(to, 0, _heights.Count), h);
+            SaveHeights();
+        }
+
+        public void LoadHeights(string eventId)
+        {
+            if (eventId == _heightsFor) return;
+            _heightsFor = eventId;
+            _heights.Clear();
+            if (string.IsNullOrEmpty(eventId)) return;
+            foreach (var part in EditorPrefs.GetString(HeightsPrefKey + eventId, "").Split(','))
+                if (float.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out float h)) _heights.Add(Mathf.Clamp(h, MinTrackHeight, MaxTrackHeight));
+        }
+
+        void SaveHeights()
+        {
+            if (string.IsNullOrEmpty(_heightsFor)) return;
+            int last = _heights.Count - 1;
+            while (last >= 0 && Mathf.Approximately(_heights[last], DefaultTrackHeight)) last--;
+            if (last < 0) { EditorPrefs.DeleteKey(HeightsPrefKey + _heightsFor); return; }
+            var parts = new string[last + 1];
+            for (int k = 0; k <= last; k++) parts[k] = _heights[k].ToString(CultureInfo.InvariantCulture);
+            EditorPrefs.SetString(HeightsPrefKey + _heightsFor, string.Join(",", parts));
+        }
 
         public static Color TrackColor(SoddTrackType t)
         {
@@ -140,9 +207,48 @@ namespace Sodd.Design.Editor
             return best;
         }
 
+        // ---- loops: banda de arriba de la regla; los bordes recortan y el medio mueve
+        public const float LoopBandPx = 12f;
+        const float LoopEdgePx = 6f;
+        enum LoopDrag { None, Start, End, Move }
+        LoopDrag _loopDrag;
+        float _loopDownT, _loopOrigStart, _loopOrigEnd;
+        public Action<int, float, float> LoopChanged;
+
+        LoopDrag LoopHit(Vector2 p, out int index)
+        {
+            index = -1;
+            var a = _s.Asset;
+            if (a == null || p.y > LoopBandPx) return LoopDrag.None;
+            for (int i = a.data.loopRegions.Length - 1; i >= 0; i--)
+            {
+                float x0 = _s.TimeToX(_s.LoopStart(i)), x1 = _s.TimeToX(_s.LoopEnd(i));
+                index = i;
+                if (Mathf.Abs(p.x - x0) <= LoopEdgePx) return LoopDrag.Start;
+                if (Mathf.Abs(p.x - x1) <= LoopEdgePx) return LoopDrag.End;
+                if (p.x > x0 && p.x < x1) return LoopDrag.Move;
+            }
+            index = -1;
+            return LoopDrag.None;
+        }
+
         void OnDown(PointerDownEvent e)
         {
             float x = e.localPosition.x;
+            if (e.button == 0)
+            {
+                var hit = LoopHit(e.localPosition, out int li);
+                if (hit != LoopDrag.None)
+                {
+                    _loopDrag = hit; _s.DragLoop = li;
+                    _loopOrigStart = _s.DragLoopStart = _s.Asset.data.loopRegions[li].start;
+                    _loopOrigEnd = _s.DragLoopEnd = _s.Asset.data.loopRegions[li].end;
+                    _loopDownT = _s.XToTime(x);
+                    this.CapturePointer(e.pointerId);
+                    e.StopPropagation();
+                    return;
+                }
+            }
             int m = MarkerAt(x);
             if (e.button == 1)
             {
@@ -170,8 +276,30 @@ namespace Sodd.Design.Editor
 
         void OnMove(PointerMoveEvent e)
         {
-            if (!this.HasPointerCapture(e.pointerId)) return;
+            if (!this.HasPointerCapture(e.pointerId))
+            {
+                var hover = LoopHit(e.localPosition, out _);
+                EnableInClassList("sd-cur-resize-h", hover == LoopDrag.Start || hover == LoopDrag.End);
+                EnableInClassList("sd-cur-move", hover == LoopDrag.Move);
+                return;
+            }
             float x = e.localPosition.x;
+            if (_loopDrag != LoopDrag.None)
+            {
+                float t = _s.XToTime(x);
+                const float minLen = 0.05f;
+                switch (_loopDrag)
+                {
+                    case LoopDrag.Start: _s.DragLoopStart = Mathf.Min(_s.SnapTime(t, e.shiftKey), _loopOrigEnd - minLen); break;
+                    case LoopDrag.End: _s.DragLoopEnd = Mathf.Max(_s.SnapTime(t, e.shiftKey), _loopOrigStart + minLen); break;
+                    case LoopDrag.Move:
+                        float start = _s.SnapTime(Mathf.Max(0f, _loopOrigStart + t - _loopDownT), e.shiftKey);
+                        _s.DragLoopStart = start; _s.DragLoopEnd = start + (_loopOrigEnd - _loopOrigStart);
+                        break;
+                }
+                _s.NotifyChanged();
+                return;
+            }
             if (_s.DragMarker >= 0)
             {
                 if (Mathf.Abs(x - _downX) < 2f) return;
@@ -189,6 +317,15 @@ namespace Sodd.Design.Editor
             if (!this.HasPointerCapture(e.pointerId)) return;
             this.ReleasePointer(e.pointerId);
             _scrubbing = false;
+            if (_loopDrag != LoopDrag.None)
+            {
+                int li = _s.DragLoop;
+                float s0 = _s.DragLoopStart, s1 = _s.DragLoopEnd;
+                _loopDrag = LoopDrag.None; _s.DragLoop = -1;
+                if (Mathf.Abs(s0 - _loopOrigStart) > 1e-4f || Mathf.Abs(s1 - _loopOrigEnd) > 1e-4f) LoopChanged?.Invoke(li, s0, s1);
+                else _s.NotifyChanged();
+                return;
+            }
             int m = _s.DragMarker;
             if (m < 0) return;
             float t = _s.DragMarkerTime;
@@ -256,11 +393,16 @@ namespace Sodd.Design.Editor
             var a = _s.Asset;
             if (a != null)
             {
-                foreach (var l in a.data.loopRegions)
+                for (int li = 0; li < a.data.loopRegions.Length; li++)
                 {
+                    var l = a.data.loopRegions[li];
                     p.fillColor = new Color(0.35f, 0.78f, 0.98f, l.HasExitCondition ? 0.35f : 0.55f);
-                    float x0 = _s.TimeToX(l.start), x1 = _s.TimeToX(l.end);
-                    p.BeginPath(); p.MoveTo(new Vector2(x0, 0)); p.LineTo(new Vector2(x1, 0)); p.LineTo(new Vector2(x1, 5)); p.LineTo(new Vector2(x0, 5)); p.ClosePath(); p.Fill();
+                    float x0 = _s.TimeToX(_s.LoopStart(li)), x1 = _s.TimeToX(_s.LoopEnd(li));
+                    float h = LoopBandPx - 4f;
+                    p.BeginPath(); p.MoveTo(new Vector2(x0, 0)); p.LineTo(new Vector2(x1, 0)); p.LineTo(new Vector2(x1, h)); p.LineTo(new Vector2(x0, h)); p.ClosePath(); p.Fill();
+                    p.fillColor = new Color(1f, 1f, 1f, li == _s.DragLoop ? 0.95f : 0.6f);
+                    p.BeginPath(); p.MoveTo(new Vector2(x0, 0)); p.LineTo(new Vector2(x0 + 2, 0)); p.LineTo(new Vector2(x0 + 2, h)); p.LineTo(new Vector2(x0, h)); p.ClosePath(); p.Fill();
+                    p.BeginPath(); p.MoveTo(new Vector2(x1 - 2, 0)); p.LineTo(new Vector2(x1, 0)); p.LineTo(new Vector2(x1, h)); p.LineTo(new Vector2(x1 - 2, h)); p.ClosePath(); p.Fill();
                 }
                 for (int i = 0; i < a.data.markers.Length; i++)
                 {
@@ -268,9 +410,9 @@ namespace Sodd.Design.Editor
                     float x = _s.TimeToX(_s.MarkerTime(i));
                     p.strokeColor = sel ? Color.white : new Color(1f, 0.82f, 0.4f, 0.9f);
                     p.lineWidth = sel ? 2 : 1;
-                    p.BeginPath(); p.MoveTo(new Vector2(x, 16)); p.LineTo(new Vector2(x, r.height)); p.Stroke();
+                    p.BeginPath(); p.MoveTo(new Vector2(x, 22)); p.LineTo(new Vector2(x, r.height)); p.Stroke();
                     p.fillColor = sel ? Color.white : new Color(1f, 0.82f, 0.4f, 1f);
-                    p.BeginPath(); p.MoveTo(new Vector2(x, 16)); p.LineTo(new Vector2(x + 5, 20)); p.LineTo(new Vector2(x, 24)); p.ClosePath(); p.Fill();
+                    p.BeginPath(); p.MoveTo(new Vector2(x, 22)); p.LineTo(new Vector2(x + 5, 26)); p.LineTo(new Vector2(x, 30)); p.ClosePath(); p.Fill();
                 }
             }
             DrawPlayhead(p, _s, r.height);
@@ -341,7 +483,7 @@ namespace Sodd.Design.Editor
         {
             var d = Data;
             int tracks = d != null ? d.tracks.Length : 0;
-            style.height = Mathf.Max(1, tracks + 1) * SoddTimelineState.TrackHeight;
+            style.height = _s.TracksHeight + SoddTimelineState.DefaultTrackHeight;
             MarkDirtyRepaint(); _waveLayer.MarkDirtyRepaint(); _overlay.MarkDirtyRepaint();
             UpdateLabels();
         }
@@ -362,14 +504,14 @@ namespace Sodd.Design.Editor
         }
 
         Rect RegionRect(float start, float len, int track) =>
-            new Rect(_s.TimeToX(start), track * SoddTimelineState.TrackHeight + 6, len * _s.PixelsPerSecond, SoddTimelineState.TrackHeight - 12);
+            new Rect(_s.TimeToX(start), _s.TrackTop(track) + 6, len * _s.PixelsPerSecond, _s.TrackHeight(track) - 12);
 
         bool HitRegion(Vector2 pos, out int track, out int region)
         {
             track = region = -1;
             var d = Data;
             if (d == null) return false;
-            int t = (int)(pos.y / SoddTimelineState.TrackHeight);
+            int t = _s.TrackAt(pos.y);
             if (t < 0 || t >= d.tracks.Length) return false;
             var regs = d.tracks[t].regions;
             for (int r = regs.Length - 1; r >= 0; r--)
@@ -387,15 +529,14 @@ namespace Sodd.Design.Editor
             var p = mgc.painter2D;
             var r = contentRect;
             var d = Data;
-            float th = SoddTimelineState.TrackHeight;
             int tracks = d != null ? d.tracks.Length : 0;
             // lanes
             for (int t = 0; t <= tracks; t++)
             {
                 p.fillColor = t == _hoverTrack ? new Color(0.35f, 0.78f, 0.98f, 0.08f) : (t % 2 == 0 ? new Color(1, 1, 1, 0.015f) : new Color(0, 0, 0, 0));
-                FillRect(p, new Rect(0, t * th, r.width, th));
+                FillRect(p, new Rect(0, _s.TrackTop(t), r.width, _s.TrackHeight(t)));
                 p.strokeColor = new Color(1, 1, 1, 0.06f); p.lineWidth = 1;
-                p.BeginPath(); p.MoveTo(new Vector2(0, (t + 1) * th)); p.LineTo(new Vector2(r.width, (t + 1) * th)); p.Stroke();
+                p.BeginPath(); float ly = _s.TrackTop(t) + _s.TrackHeight(t); p.MoveTo(new Vector2(0, ly)); p.LineTo(new Vector2(r.width, ly)); p.Stroke();
             }
             // grilla
             float step = SoddRuler.TickStep(_s.PixelsPerSecond);
@@ -403,14 +544,15 @@ namespace Sodd.Design.Editor
             for (float t = Mathf.Max(0, Mathf.Floor(_s.Offset / step) * step); _s.TimeToX(t) < r.width; t += step)
             {
                 float x = _s.TimeToX(t);
-                p.BeginPath(); p.MoveTo(new Vector2(x, 0)); p.LineTo(new Vector2(x, tracks * th)); p.Stroke();
+                p.BeginPath(); p.MoveTo(new Vector2(x, 0)); p.LineTo(new Vector2(x, _s.TracksHeight)); p.Stroke();
             }
             if (d == null) return;
             // loops (banda tenue en todo el alto)
-            foreach (var l in d.loopRegions)
+            for (int li = 0; li < d.loopRegions.Length; li++)
             {
                 p.fillColor = new Color(0.35f, 0.78f, 0.98f, 0.04f);
-                FillRect(p, new Rect(_s.TimeToX(l.start), 0, (l.end - l.start) * _s.PixelsPerSecond, tracks * th));
+                float ls = _s.LoopStart(li), le = _s.LoopEnd(li);
+                FillRect(p, new Rect(_s.TimeToX(ls), 0, (le - ls) * _s.PixelsPerSecond, _s.TracksHeight));
             }
             // regiones
             for (int t = 0; t < tracks; t++)
@@ -500,7 +642,6 @@ namespace Sodd.Design.Editor
         {
             var p = mgc.painter2D;
             var d = Data;
-            float th = SoddTimelineState.TrackHeight;
             if (d != null)
             {
                 for (int t = 0; t < d.tracks.Length; t++)
@@ -551,7 +692,7 @@ namespace Sodd.Design.Editor
                 {
                     p.strokeColor = i == _s.SelMarker ? new Color(1f, 1f, 1f, 0.7f) : new Color(1f, 0.82f, 0.4f, 0.5f); p.lineWidth = 1;
                     float x = _s.TimeToX(_s.MarkerTime(i));
-                    for (float y = 0; y < d.tracks.Length * th; y += 8) { p.BeginPath(); p.MoveTo(new Vector2(x, y)); p.LineTo(new Vector2(x, y + 4)); p.Stroke(); }
+                    for (float y = 0; y < _s.TracksHeight; y += 8) { p.BeginPath(); p.MoveTo(new Vector2(x, y)); p.LineTo(new Vector2(x, y + 4)); p.Stroke(); }
                 }
             }
             SoddRuler.DrawPlayhead(p, _s, contentRect.height);
@@ -639,6 +780,23 @@ namespace Sodd.Design.Editor
             return string.IsNullOrEmpty(r.name) ? what : r.name + " · " + what;
         }
 
+        /// <summary>Ancho de la zona de borde para recortar: 8 px, menos en regiones muy angostas.</summary>
+        static float EdgePx(Rect r) => Mathf.Clamp(r.width * 0.25f, 3f, 8f);
+
+        void UpdateHoverCursor(Vector2 lp)
+        {
+            bool edge = false, body = false;
+            if (Data != null && HitRegion(lp, out int t, out int g))
+            {
+                var reg = Data.tracks[t].regions[g];
+                var rect = RegionRect(reg.start, reg.length, t);
+                edge = lp.x < rect.x + EdgePx(rect) || lp.x > rect.xMax - EdgePx(rect);
+                body = !edge;
+            }
+            EnableInClassList("sd-cur-resize-h", edge);
+            EnableInClassList("sd-cur-move", body);
+        }
+
         // ------------------------------------------------------------------ interacción
         void OnDown(PointerDownEvent e)
         {
@@ -661,8 +819,8 @@ namespace Sodd.Design.Editor
             float fiX = rect.x + reg.fadeIn * _s.PixelsPerSecond, foX = rect.xMax - reg.fadeOut * _s.PixelsPerSecond;
             if (lp.y < rect.y + 10 && Mathf.Abs(lp.x - fiX) < 7) _drag = Drag.FadeIn;
             else if (lp.y < rect.y + 10 && Mathf.Abs(lp.x - foX) < 7) _drag = Drag.FadeOut;
-            else if (lp.x < rect.x + 6) _drag = Drag.ResizeL;
-            else if (lp.x > rect.xMax - 6) _drag = Drag.ResizeR;
+            else if (lp.x < rect.x + EdgePx(rect)) _drag = Drag.ResizeL;
+            else if (lp.x > rect.xMax - EdgePx(rect)) _drag = Drag.ResizeR;
             else _drag = Drag.Move;
             _dragTrack = t; _dragRegion = g;
             _origStart = reg.start; _origLen = reg.length; _origFade = _drag == Drag.FadeIn ? reg.fadeIn : reg.fadeOut;
@@ -672,11 +830,8 @@ namespace Sodd.Design.Editor
 
         void OnMove(PointerMoveEvent e)
         {
-            if (_drag == Drag.None)
-            {
-                // cursor según zona
-                return;
-            }
+            if (_drag == Drag.None) { UpdateHoverCursor(e.localPosition); return; }
+            EnableInClassList("sd-cur-move", false);
             float dx = e.localPosition.x - _downPos.x;
             float dt = dx / _s.PixelsPerSecond;
             bool noSnap = e.shiftKey;
@@ -688,7 +843,7 @@ namespace Sodd.Design.Editor
                     return;
                 case Drag.Move:
                     _tStart = _s.SnapTime(_origStart + dt, noSnap);
-                    _tTrack = Mathf.Clamp((int)(e.localPosition.y / SoddTimelineState.TrackHeight), 0, Data.tracks.Length - 1);
+                    _tTrack = Mathf.Clamp(_s.TrackAt(e.localPosition.y), 0, Data.tracks.Length - 1);
                     break;
                 case Drag.ResizeL:
                     {
@@ -753,7 +908,7 @@ namespace Sodd.Design.Editor
         {
             if (_s.Asset == null || DraggedClips().Count == 0) return;
             DragAndDrop.visualMode = DragAndDropVisualMode.Copy;
-            int t = (int)(e.localMousePosition.y / SoddTimelineState.TrackHeight);
+            int t = _s.TrackAt(e.localMousePosition.y);
             if (t != _hoverTrack) { _hoverTrack = t; MarkDirtyRepaint(); }
         }
 
@@ -763,7 +918,7 @@ namespace Sodd.Design.Editor
             _hoverTrack = -1;
             if (_s.Asset == null || clips.Count == 0) return;
             DragAndDrop.AcceptDrag();
-            int t = (int)(e.localMousePosition.y / SoddTimelineState.TrackHeight);
+            int t = _s.TrackAt(e.localMousePosition.y);
             if (t >= Data.tracks.Length) t = -1;
             ClipsDropped?.Invoke(t, _s.SnapTime(_s.XToTime(e.localMousePosition.x)), clips.ToArray());
         }

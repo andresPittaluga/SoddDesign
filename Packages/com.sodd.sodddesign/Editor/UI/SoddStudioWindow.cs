@@ -57,6 +57,7 @@ namespace Sodd.Design.Editor
         ListView _tree;
         SoddTimelineCanvas _canvas;
         SoddRuler _ruler;
+        SoddOverview _overview;
         Button _play;
         readonly List<Row> _rows = new List<Row>();
 
@@ -161,10 +162,14 @@ namespace Sodd.Design.Editor
             // timeline
             _ruler = new SoddRuler(_s);
             _rulerHost.Add(_ruler);
+            _overview = new SoddOverview(_s, () => _canvasHost.contentRect.width);
+            _root.Q("overview-host").Add(_overview);
             _ruler.ContextRequested = (t, pos) => TimelineContext(-1, -1, t, pos);
             _ruler.MarkerMoved = (i, t) => Report(SoddCommands.MoveMarker(_selectedId, i, t));
             _ruler.MarkerRenameRequested = RenameMarker;
             _ruler.MarkerContextRequested = MarkerContext;
+            _ruler.LoopChanged = (i, start, end) => Report(SoddCommands.EditEvent(_selectedId,
+                $"[{{\"op\":\"add\",\"path\":\"/loopRegions/{i}/start\",\"value\":{Sodd.Design.Json.SoddJson.FormatNumber((float)Math.Round(start, 4))}}},{{\"op\":\"add\",\"path\":\"/loopRegions/{i}/end\",\"value\":{Sodd.Design.Json.SoddJson.FormatNumber((float)Math.Round(end, 4))}}}]"));
             _canvas = new SoddTimelineCanvas(_s);
             _canvasHost.Add(_canvas);
             _canvas.CommitMove = (t, r, start, len, nt) =>
@@ -257,10 +262,11 @@ namespace Sodd.Design.Editor
                 if (_s.SelMarker >= sel.data.markers.Length) _s.SelMarker = -1;
             }
             else _s.SelMarker = -1;
-            _s.DragMarker = -1;
+            _s.DragMarker = -1; _s.DragLoop = -1;
             BuildTags();
             BuildRows();
             BuildHeader();
+            _s.LoadHeights(_selectedId);
             BuildTrackHeaders();
             BuildInspector();
             BuildParams();
@@ -272,6 +278,7 @@ namespace Sodd.Design.Editor
             if (_canvas == null) return;
             _canvas.RepaintAll();
             _ruler.Refresh();
+            _overview?.MarkDirtyRepaint();
             BuildTrackHeadersSelection();
             _time.text = _s.Playhead.ToString("0.00") + " s";
         }
@@ -435,6 +442,7 @@ namespace Sodd.Design.Editor
                 var tr = a.data.tracks[t];
                 int ti = t;
                 var h = new VisualElement(); h.AddToClassList("sd-thead");
+                h.style.height = _s.TrackHeight(ti);
                 h.style.borderLeftColor = SoddTimelineState.TrackColor(tr.type);
                 var n = new Label(tr.name); n.AddToClassList("sd-thead-name"); h.Add(n);
                 var chips = new VisualElement(); chips.AddToClassList("sd-row");
@@ -450,9 +458,15 @@ namespace Sodd.Design.Editor
                 h.Add(chips);
                 int count = a.data.tracks.Length;
                 h.tooltip = "Click: seleccionar · Arrastrar arriba/abajo: reordenar · Click derecho: más opciones";
-                h.RegisterCallback<PointerDownEvent>(e => { if (e.button != 0) return; _s.Select(ti, -1); BeginTrackDrag(h, ti, e); });
-                h.RegisterCallback<PointerMoveEvent>(e => DragTrack(h, e));
-                h.RegisterCallback<PointerUpEvent>(e => EndTrackDrag(h, e));
+                h.RegisterCallback<PointerDownEvent>(e =>
+                {
+                    if (e.button != 0) return;
+                    if (OnResizeEdge(h, e.localPosition.y)) { BeginTrackResize(h, ti, e); return; }
+                    _s.Select(ti, -1); BeginTrackDrag(h, ti, e);
+                });
+                h.RegisterCallback<PointerMoveEvent>(e => { if (!ResizeTrack(h, e)) DragTrack(h, e); h.EnableInClassList("sd-cur-resize-v", _resizeTrack >= 0 || OnResizeEdge(h, e.localPosition.y)); });
+                h.RegisterCallback<PointerUpEvent>(e => { if (!EndTrackResize(h, e)) EndTrackDrag(h, e); });
+                h.RegisterCallback<PointerLeaveEvent>(_ => { if (_resizeTrack < 0) h.RemoveFromClassList("sd-cur-resize-v"); });
                 h.AddManipulator(new ContextualMenuManipulator(e =>
                 {
                     e.menu.AppendAction("Renombrar…", _ => SoddPrompt.Show("Renombrar track", "Nombre", tr.name, v => Report(SoddCommands.SetProperty(_selectedId, $"/tracks/{ti}/name", Sodd.Design.Json.SoddJson.Write(Sodd.Design.Json.JsonNode.From(v), false)))));
@@ -503,6 +517,39 @@ namespace Sodd.Design.Editor
                 e.StopPropagation();
                 if (moved) Report(SoddCommands.SetProperty(_selectedId, ptr, Sodd.Design.Json.SoddJson.FormatNumber((float)Math.Round(value, 2))));
             });
+        }
+
+        // ---- alto del track arrastrando el borde de abajo del header
+        const float ResizeEdgePx = 6f;
+        int _resizeTrack = -1;
+        float _resizeStartY, _resizeStartH;
+
+        static bool OnResizeEdge(VisualElement h, float localY) => localY >= h.layout.height - ResizeEdgePx;
+
+        void BeginTrackResize(VisualElement h, int track, PointerDownEvent e)
+        {
+            e.StopPropagation();
+            if (e.clickCount == 2) { _s.SetTrackHeight(track, SoddTimelineState.DefaultTrackHeight, true); h.style.height = SoddTimelineState.DefaultTrackHeight; _canvas.RepaintAll(); return; }
+            _resizeTrack = track; _resizeStartY = e.position.y; _resizeStartH = _s.TrackHeight(track);
+            h.CapturePointer(e.pointerId);
+        }
+
+        bool ResizeTrack(VisualElement h, PointerMoveEvent e)
+        {
+            if (_resizeTrack < 0 || !h.HasPointerCapture(e.pointerId)) return false;
+            _s.SetTrackHeight(_resizeTrack, _resizeStartH + (e.position.y - _resizeStartY), false);
+            h.style.height = _s.TrackHeight(_resizeTrack);
+            _canvas.RepaintAll();
+            return true;
+        }
+
+        bool EndTrackResize(VisualElement h, PointerUpEvent e)
+        {
+            if (_resizeTrack < 0 || !h.HasPointerCapture(e.pointerId)) return false;
+            h.ReleasePointer(e.pointerId);
+            _s.SetTrackHeight(_resizeTrack, _s.TrackHeight(_resizeTrack), true);
+            _resizeTrack = -1;
+            return true;
         }
 
         // ---- reordenar tracks arrastrando el header
@@ -558,6 +605,7 @@ namespace Sodd.Design.Editor
         {
             var r = SoddCommands.MoveTrack(_selectedId, from, to);
             Report(r);
+            if (r.ok) _s.MoveTrackHeight(from, to);
             if (r.ok) { _s.SelTrack = Mathf.Clamp(to, 0, _s.Asset.data.tracks.Length - 1); _s.SelRegion = -1; }
         }
 
@@ -818,7 +866,7 @@ namespace Sodd.Design.Editor
                 // auto-scroll si el playhead se va de la vista
                 float w = _canvasHost.contentRect.width;
                 if (w > 0 && _s.TimeToX(_s.Playhead) > w - 20) { _s.Offset = _s.Playhead - 20 / _s.PixelsPerSecond; _s.NotifyChanged(); }
-                _canvas.RepaintPlayhead(); _ruler.MarkDirtyRepaint();
+                _canvas.RepaintPlayhead(); _ruler.MarkDirtyRepaint(); _overview?.MarkDirtyRepaint();
                 _time.text = _s.Playhead.ToString("0.00") + " s";
             }
             else if (_s.Playing)
@@ -877,6 +925,37 @@ namespace Sodd.Design.Editor
 
         [Shortcut(Sc + "Loop de la preview", typeof(SoddStudioWindow), KeyCode.L)]
         static void ScLoop(ShortcutArguments a) => Run(a, w => w.ToggleLoopPreview(), false);
+
+        [Shortcut(Sc + "Renombrar lo seleccionado", typeof(SoddStudioWindow), KeyCode.F2)]
+        static void ScRename(ShortcutArguments a) => Run(a, w => w.RenameSelection());
+
+        internal enum RenameKind { Marker, Region, Track, Event }
+
+        /// <summary>Qué renombra F2: el marker seleccionado, si no la región, si no el track, si no el evento.</summary>
+        internal static RenameKind RenameTarget(int selMarker, int selTrack, int selRegion) =>
+            selMarker >= 0 ? RenameKind.Marker : selTrack >= 0 && selRegion >= 0 ? RenameKind.Region : selTrack >= 0 ? RenameKind.Track : RenameKind.Event;
+
+        void RenameSelection()
+        {
+            var d = _s.Asset.data;
+            int t = _s.SelTrack, r = _s.SelRegion;
+            string J(string v) => Sodd.Design.Json.SoddJson.Write(Sodd.Design.Json.JsonNode.From(v), false);
+            switch (RenameTarget(_s.SelMarker, t, r))
+            {
+                case RenameKind.Marker: RenameMarker(_s.SelMarker); break;
+                case RenameKind.Region:
+                    if (t < d.tracks.Length && r < d.tracks[t].regions.Length)
+                        SoddPrompt.Show("Renombrar región", "Nombre", d.tracks[t].regions[r].name ?? "", v => Report(SoddCommands.SetProperty(_selectedId, $"/tracks/{t}/regions/{r}/name", J(v))));
+                    break;
+                case RenameKind.Track:
+                    if (t < d.tracks.Length)
+                        SoddPrompt.Show("Renombrar track", "Nombre", d.tracks[t].name, v => Report(SoddCommands.SetProperty(_selectedId, $"/tracks/{t}/name", J(v))));
+                    break;
+                default:
+                    SoddPrompt.Show("Renombrar evento", "Nombre", d.Name, v => Report(SoddCommands.RenameEvent(_selectedId, v)));
+                    break;
+            }
+        }
 
         [Shortcut(Sc + "Volver al inicio", typeof(SoddStudioWindow), KeyCode.Home)]
         static void ScHome(ShortcutArguments a) => Run(a, w => w.Rewind());

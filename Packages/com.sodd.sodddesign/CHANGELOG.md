@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11] - 2026-11-25
+- Alto de cada track: arrastrar el borde de abajo de su nombre (40–240 px, doble click = 64). Se guarda por evento en EditorPrefs, no en el `.sodd.json`. Con más alto entran más franjas de un multi-instrumento.
+- Barra de vista general bajo la regla: todo el evento en miniatura y un recuadro con la parte visible; se arrastra o se hace click para moverse.
+- F2 renombra lo seleccionado (marker, región, track o evento).
+- Loops: arrastrar sus bordes en la regla los estira o achica; el medio los mueve.
+- Regiones: el cursor cambia sobre los bordes (recortar) y el cuerpo (mover); la zona de borde pasa a 8 px.
+
 ## [0.1.10] - 2026-11-24
 - Regiones RandomClip/Sequential: cada sonido en su propia franja (waveform + nombre, numerados en la secuencia), como el multi-instrumento de FMOD; tantas franjas como entren con el nombre legible (hasta 6) y "+N más" en la última.
 - Preview: botón ⟳ junto a Play (tecla L) que repite la escucha sin cambiar el evento.

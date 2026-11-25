@@ -51,6 +51,7 @@ En el Studio, el botón **?** (arriba a la derecha) muestra los atajos en cualqu
 | D o Ctrl+D | Duplicar región |
 | Supr o Backspace | Borrar lo seleccionado (región, marker o track) |
 | F | Ajustar zoom al evento |
+| F2 | Renombrar lo seleccionado |
 | Ctrl+Z / Ctrl+Y | Deshacer / rehacer (todo se puede deshacer) |
 | Shift + arrastrar | Mover sin snap (regiones, markers y playhead) |
 
@@ -67,6 +68,14 @@ Los atajos se pueden cambiar en `Edit > Shortcuts > SoddDesign Studio`.
 - **Click derecho en el nombre**: renombrar, subir, bajar, duplicar (con regiones y efectos) o borrar.
 - **Volumen rápido**: arrastrá el chip de dB del track hacia arriba o abajo (Shift = fino, doble click = 0 dB).
 - **M / S**: mute y solo.
+
+### Ver y moverse
+- **Alto de un track**: arrastrá el borde de abajo de su nombre (40 a 240 px). Doble click en el borde lo vuelve al alto normal. Es solo de tu vista: no cambia el evento ni aparece en git.
+- **Barra de vista general** (debajo de la regla): muestra todo el evento en chiquito; el recuadro blanco es lo que estás viendo. Arrastralo o hacé click para ir a otra parte cuando tenés mucho zoom.
+- **F2** renombra lo que tengas seleccionado: marker, región, track o, si no hay nada, el evento.
+
+### Loops
+- La banda celeste de arriba de la regla es el loop. Arrastrá sus bordes para estirarlo o achicarlo, y el medio para moverlo (Shift = sin snap).
 
 ### Markers
 - **Crear**: click derecho en la regla → *Agregar marker*.

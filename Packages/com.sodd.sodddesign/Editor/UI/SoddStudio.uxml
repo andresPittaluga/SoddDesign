@@ -34,6 +34,10 @@
                     <ui:Label name="ruler-corner" text="segundos" class="sd-ruler-corner" />
                     <ui:VisualElement name="ruler-host" class="sd-ruler" />
                 </ui:VisualElement>
+                <ui:VisualElement name="overview-row" class="sd-overview-row">
+                    <ui:Label text="vista" class="sd-ruler-corner" />
+                    <ui:VisualElement name="overview-host" class="sd-overview" />
+                </ui:VisualElement>
                 <ui:ScrollView name="tracks-scroll" class="sd-tracks-scroll" mode="Vertical">
                     <ui:VisualElement name="tracks-row" class="sd-tracks-row">
                         <ui:VisualElement name="track-headers" class="sd-track-headers" />

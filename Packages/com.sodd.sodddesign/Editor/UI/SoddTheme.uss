@@ -88,11 +88,11 @@
 /* ---------- cabecera de evento + timeline ---------- */
 .sd-ehead { flex-direction: row; align-items: center; padding: var(--sd-s2) var(--sd-s3); background-color: var(--sd-bg1); border-bottom-width: 1px; border-color: var(--sd-line); flex-shrink: 0; }
 .sd-ehead-title { font-size: 15px; -unity-font-style: bold; margin-right: var(--sd-s3); }
-.sd-ruler-row { flex-direction: row; height: 34px; flex-shrink: 0; background-color: var(--sd-bg1); border-bottom-width: 1px; border-color: var(--sd-line); }
+.sd-ruler-row { flex-direction: row; height: 40px; flex-shrink: 0; background-color: var(--sd-bg1); border-bottom-width: 1px; border-color: var(--sd-line); }
 .sd-ruler-corner { width: 170px; flex-shrink: 0; border-right-width: 1px; border-color: var(--sd-line); justify-content: center; padding-left: 8px; color: var(--sd-dim); font-size: 10px; }
 .sd-ruler { flex-grow: 1; overflow: hidden; }
-.sd-ruler-label { position: absolute; top: 2px; font-size: 9px; color: var(--sd-dim); }
-.sd-marker-label { position: absolute; top: 16px; font-size: 9px; color: var(--sd-warn); }
+.sd-ruler-label { position: absolute; top: 9px; font-size: 9px; color: var(--sd-dim); }
+.sd-marker-label { position: absolute; top: 22px; font-size: 9px; color: var(--sd-warn); }
 .sd-marker-label--sel { color: #ffffff; -unity-font-style: bold; }
 .sd-thead-drop { position: absolute; left: 0; right: 0; height: 2px; background-color: #5ab8ff; }
 .sd-thead--drag { opacity: 0.6; }
@@ -174,3 +174,10 @@
 
 .sd-tbtn--on { background-color: var(--sd-accent); color: var(--sd-accent-dark); }
 .sd-rnd-readout { font-size: 10px; color: var(--sd-accent); margin-left: 4px; min-width: 54px; -unity-text-align: middle-right; }
+
+.sd-cur-resize-v { cursor: resize-vertical; }
+.sd-cur-resize-h { cursor: resize-horizontal; }
+.sd-cur-move { cursor: move-arrow; }
+
+.sd-overview-row { flex-direction: row; height: 16px; flex-shrink: 0; background-color: var(--sd-bg1); border-bottom-width: 1px; border-color: var(--sd-line); }
+.sd-overview { flex-grow: 1; overflow: hidden; margin: 2px 0; }

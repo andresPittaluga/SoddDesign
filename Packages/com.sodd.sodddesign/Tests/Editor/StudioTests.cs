@@ -46,6 +46,28 @@ namespace Sodd.Design.Tests
         }
 
         [Test]
+        public void TrackHeightsStackAndClamp()
+        {
+            var s = new SoddTimelineState();
+            s.SetTrackHeight(0, 100f, false);
+            Assert.AreEqual(100f, s.TrackTop(1));
+            Assert.AreEqual(100f + SoddTimelineState.DefaultTrackHeight, s.TrackTop(2));
+            s.SetTrackHeight(1, 1000f, false);
+            Assert.AreEqual(SoddTimelineState.MaxTrackHeight, s.TrackHeight(1));
+            s.SetTrackHeight(1, 1f, false);
+            Assert.AreEqual(SoddTimelineState.MinTrackHeight, s.TrackHeight(1));
+        }
+
+        [Test]
+        public void F2RenamesWhatIsSelected()
+        {
+            Assert.AreEqual(SoddStudioWindow.RenameKind.Marker, SoddStudioWindow.RenameTarget(0, 1, 2));
+            Assert.AreEqual(SoddStudioWindow.RenameKind.Region, SoddStudioWindow.RenameTarget(-1, 1, 2));
+            Assert.AreEqual(SoddStudioWindow.RenameKind.Track, SoddStudioWindow.RenameTarget(-1, 1, -1));
+            Assert.AreEqual(SoddStudioWindow.RenameKind.Event, SoddStudioWindow.RenameTarget(-1, -1, -1));
+        }
+
+        [Test]
         public void WaveformCacheBuildsTexture()
         {
             var clip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sandbox/Audio/kick.wav");
