@@ -18,6 +18,8 @@ namespace Sodd.Design.Editor
         /// <summary>Marker que se está arrastrando (-1 = ninguno) y su tiempo provisorio.</summary>
         public int DragMarker = -1;
         public float DragMarkerTime;
+        /// <summary>Clip (posición en el instrumento) que tocó cada región en el último play; clave track*4096+region.</summary>
+        public readonly Dictionary<int, int> LastPickedClip = new Dictionary<int, int>();
         public float Playhead;
         public bool Playing;
         public SoddEventAsset Asset;
@@ -428,6 +430,20 @@ namespace Sodd.Design.Editor
             }
         }
 
+        const int MaxStrips = 6;
+        const float MinStripPx = 6f, LabelPx = 14f;
+
+        /// <summary>Franjas en que se divide una región: una por clip en RandomClip/Sequential (máx. 6), si entran.</summary>
+        static int StripCount(SoddInstrument ins, float waveHeight)
+        {
+            bool multi = (ins.type == SoddInstrumentType.RandomClip || ins.type == SoddInstrumentType.Sequential) && ins.clips.Length > 1;
+            if (!multi) return 1;
+            int n = Mathf.Min(ins.clips.Length, MaxStrips);
+            return waveHeight / n >= MinStripPx ? n : 1;
+        }
+
+        static Rect WaveRect(Rect region) { region.yMin += LabelPx; return region; }
+
         void DrawWaves(MeshGenerationContext mgc)
         {
             var d = Data;
@@ -441,33 +457,43 @@ namespace Sodd.Design.Editor
                 {
                     var ins = regs[g].instrument;
                     if (ins.clips.Length == 0) continue;
-                    int ci = ins.clips[0].clipIndex;
-                    if (ci < 0 || ci >= a.clips.Length || a.clips[ci] == null) continue;
-                    var clip = a.clips[ci];
-                    var tex = SoddWaveformCache.Get(clip);
-                    if (tex == null) continue;
                     RegionValues(t, g, out float st, out float len, out _, out _, out int vt);
-                    var rect = RegionRect(st, len, vt);
-                    rect.yMin += 14;
-                    float clipLen = Mathf.Max(0.001f, clip.length);
-                    float off = ins.startOffset.@base;
-                    float u0 = off / clipLen;
-                    float u1 = ins.loop ? (off + len) / clipLen : Mathf.Min(1f, (off + len) / clipLen);
-                    float drawW = ins.loop ? rect.width : Mathf.Min(rect.width, (clipLen - off) * _s.PixelsPerSecond);
-                    if (drawW <= 1) continue;
-                    var md = mgc.Allocate(4, 6, tex);
-                    float x0 = rect.x, x1 = rect.x + drawW, y0 = rect.y, y1 = rect.yMax;
-                    float uEnd = ins.loop ? u1 : Mathf.Min(1f, u0 + drawW / _s.PixelsPerSecond / clipLen);
-                    md.SetAllVertices(new[]
+                    var wave = WaveRect(RegionRect(st, len, vt));
+                    int strips = StripCount(ins, wave.height);
+                    float h = wave.height / strips;
+                    for (int s = 0; s < strips; s++)
                     {
-                        new Vertex { position = new Vector3(x0, y0, Vertex.nearZ), tint = tint, uv = new Vector2(u0, 1) },
-                        new Vertex { position = new Vector3(x1, y0, Vertex.nearZ), tint = tint, uv = new Vector2(uEnd, 1) },
-                        new Vertex { position = new Vector3(x1, y1, Vertex.nearZ), tint = tint, uv = new Vector2(uEnd, 0) },
-                        new Vertex { position = new Vector3(x0, y1, Vertex.nearZ), tint = tint, uv = new Vector2(u0, 0) },
-                    });
-                    md.SetAllIndices(new ushort[] { 0, 1, 2, 2, 3, 0 });
+                        var cr = ins.clips[s];
+                        int ci = cr.clipIndex;
+                        if (ci < 0 || ci >= a.clips.Length || a.clips[ci] == null) continue;
+                        float off = ins.startOffset.@base + (strips > 1 ? cr.startOffset : 0f);
+                        var strip = new Rect(wave.x, wave.y + s * h, wave.width, h - (strips > 1 ? 1f : 0f));
+                        DrawWaveQuad(mgc, a.clips[ci], strip, off, len, ins.loop, tint);
+                    }
                 }
             }
+        }
+
+        void DrawWaveQuad(MeshGenerationContext mgc, AudioClip clip, Rect rect, float off, float len, bool loop, Color32 tint)
+        {
+            var tex = SoddWaveformCache.Get(clip);
+            if (tex == null) return;
+            float clipLen = Mathf.Max(0.001f, clip.length);
+            float u0 = off / clipLen;
+            float u1 = loop ? (off + len) / clipLen : Mathf.Min(1f, (off + len) / clipLen);
+            float drawW = loop ? rect.width : Mathf.Min(rect.width, (clipLen - off) * _s.PixelsPerSecond);
+            if (drawW <= 1 || rect.height <= 1) return;
+            var md = mgc.Allocate(4, 6, tex);
+            float x0 = rect.x, x1 = rect.x + drawW, y0 = rect.y, y1 = rect.yMax;
+            float uEnd = loop ? u1 : Mathf.Min(1f, u0 + drawW / _s.PixelsPerSecond / clipLen);
+            md.SetAllVertices(new[]
+            {
+                new Vertex { position = new Vector3(x0, y0, Vertex.nearZ), tint = tint, uv = new Vector2(u0, 1) },
+                new Vertex { position = new Vector3(x1, y0, Vertex.nearZ), tint = tint, uv = new Vector2(uEnd, 1) },
+                new Vertex { position = new Vector3(x1, y1, Vertex.nearZ), tint = tint, uv = new Vector2(uEnd, 0) },
+                new Vertex { position = new Vector3(x0, y1, Vertex.nearZ), tint = tint, uv = new Vector2(u0, 0) },
+            });
+            md.SetAllIndices(new ushort[] { 0, 1, 2, 2, 3, 0 });
         }
 
         void DrawOverlay(MeshGenerationContext mgc)
@@ -500,6 +526,19 @@ namespace Sodd.Design.Editor
                         p.fillColor = sel ? Color.white : new Color(1, 1, 1, 0.55f);
                         Circle(p, new Vector2(rect.x + fi * _s.PixelsPerSecond, rect.y + 1), sel ? 4 : 3);
                         Circle(p, new Vector2(rect.xMax - fo * _s.PixelsPerSecond, rect.y + 1), sel ? 4 : 3);
+                        // the clip this region played last: a bright bar on its strip
+                        var ins = regs[g].instrument;
+                        var wave = WaveRect(rect);
+                        int strips = StripCount(ins, wave.height);
+                        if (strips > 1 && _s.LastPickedClip.TryGetValue(t * 4096 + g, out int picked) && picked >= 0)
+                        {
+                            float h = wave.height / strips;
+                            int s = Mathf.Min(picked, strips - 1);
+                            p.fillColor = new Color(1f, 1f, 1f, 0.9f);
+                            FillRect(p, new Rect(wave.x + 1, wave.y + s * h, 3, h - 1));
+                            p.fillColor = new Color(1f, 1f, 1f, 0.18f);
+                            FillRect(p, new Rect(wave.x + 4, wave.y + s * h, wave.width - 5, h - 1));
+                        }
                         if (sel)
                         {
                             p.strokeColor = Color.white; p.lineWidth = 2;
@@ -552,13 +591,36 @@ namespace Sodd.Design.Editor
                         RegionValues(t, g, out float st, out float len, out _, out _, out int vt);
                         var rect = RegionRect(st, len, vt);
                         if (rect.width < 24) continue;
-                        while (_labels.Count <= n) { var l = new Label { pickingMode = PickingMode.Ignore }; l.AddToClassList("sd-region-label"); _labels.Add(l); _labelLayer.Add(l); }
-                        var lab = _labels[n++];
-                        lab.style.display = DisplayStyle.Flex;
+                        var lab = NextLabel(ref n, "sd-region-label");
                         lab.style.left = rect.x + 6; lab.style.top = rect.y + 1; lab.style.width = rect.width - 10;
                         lab.text = RegionLabel(reg);
+
+                        var ins = reg.instrument;
+                        var wave = WaveRect(rect);
+                        int strips = StripCount(ins, wave.height);
+                        float h = wave.height / strips;
+                        if (strips < 2 || h < 10f) continue;
+                        bool numbered = ins.type == SoddInstrumentType.Sequential;
+                        for (int s = 0; s < strips; s++)
+                        {
+                            var sl = NextLabel(ref n, "sd-strip-label");
+                            sl.style.left = rect.x + 6; sl.style.top = wave.y + s * h; sl.style.width = rect.width - 10; sl.style.height = h;
+                            bool more = s == strips - 1 && ins.clips.Length > strips;
+                            string name = System.IO.Path.GetFileNameWithoutExtension(ins.clips[s].path ?? "");
+                            sl.text = (numbered ? (s + 1) + ". " : "") + name + (more ? $"   +{ins.clips.Length - strips} más" : "");
+                        }
                     }
             for (int i = n; i < _labels.Count; i++) _labels[i].style.display = DisplayStyle.None;
+        }
+
+        Label NextLabel(ref int n, string cls)
+        {
+            while (_labels.Count <= n) { var l = new Label { pickingMode = PickingMode.Ignore }; _labels.Add(l); _labelLayer.Add(l); }
+            var lab = _labels[n++];
+            lab.ClearClassList(); lab.AddToClassList(cls);
+            lab.style.display = DisplayStyle.Flex;
+            lab.style.height = StyleKeyword.Auto;
+            return lab;
         }
 
         static string RegionLabel(SoddRegion r)
@@ -569,8 +631,8 @@ namespace Sodd.Design.Editor
             {
                 case SoddInstrumentType.Silence: what = "silencio"; break;
                 case SoddInstrumentType.NestedEvent: what = "↳ " + ins.nestedEvent; break;
-                case SoddInstrumentType.RandomClip: what = $"🎲 Random ×{ins.clips.Length}"; break;
-                case SoddInstrumentType.Sequential: what = $"⇢ Secuencia ×{ins.clips.Length}"; break;
+                case SoddInstrumentType.RandomClip: what = $"🎲 Random · {ins.clips.Length} sonidos"; break;
+                case SoddInstrumentType.Sequential: what = $"⇢ Secuencia · {ins.clips.Length} sonidos"; break;
                 default: what = ins.clips.Length > 0 ? System.IO.Path.GetFileNameWithoutExtension(ins.clips[0].path ?? "") : "(sin clip)"; break;
             }
             if (ins.loop) what = "⟳ " + what;

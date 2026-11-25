@@ -16,6 +16,8 @@ namespace Sodd.Design.Editor
             ("Espacio", "Play / Stop del evento"),
             ("Esc", "Stop y volver al inicio"),
             ("Inicio", "Volver al inicio"),
+            ("L o el botón ⟳", "Repetir la preview: cuando el evento termina vuelve a sonar (no cambia el evento)"),
+            ("▶ al lado de una perilla", "Valor que tocó en el último play, si la perilla tiene un modulador Random"),
             ("F", "Encuadrar el evento"),
             ("Rueda sobre el timeline", "Zoom centrado en el mouse"),
             ("Botón del medio o Alt+arrastrar", "Desplazar el timeline"),

@@ -79,6 +79,13 @@ namespace Sodd.Design.Editor
             SoddPreview.Play(a);
         }
 
+        [MenuItem("Sodd/Dev/Normalize Event Files", priority = 102)]
+        static void Normalize()
+        {
+            int n = SoddCommands.NormalizeAllEventFiles();
+            Debug.Log($"[SoddDesign] {n} eventos reescritos en formato canónico (el que usa el Studio al guardar).");
+        }
+
         [MenuItem("Sodd/Rebuild Registry", priority = 22)]
         static void Rebuild() { SoddProjectFiles.ClearCache(); SoddProjectFiles.RebuildRegistry(); Debug.Log("[SoddDesign] Registro reconstruido."); }
     }

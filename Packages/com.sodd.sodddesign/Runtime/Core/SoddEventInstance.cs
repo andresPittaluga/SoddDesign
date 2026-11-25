@@ -85,6 +85,23 @@ namespace Sodd.Design
 
         public void SetPaused(bool paused) { var s = State; if (s != null) s.userPaused = paused; }
 
+        /// <summary>Instance seed: with a trigger seed it reproduces the value every Random modulator picked.</summary>
+        public uint Seed { get { var s = State; return s != null ? s.instanceSeed : 0u; } }
+
+        /// <summary>Copies the most recent region triggers, newest first, into buffer. Returns how many were written.</summary>
+        public int GetRecentTriggers(SoddTriggerInfo[] buffer)
+        {
+            var s = State;
+            if (s == null || buffer == null) return 0;
+            int n = Math.Min(Math.Min(s.tlCount, SoddInstance.MaxTriggerLog), buffer.Length);
+            for (int k = 0; k < n; k++)
+            {
+                int slot = (s.tlCount - 1 - k) % SoddInstance.MaxTriggerLog;
+                buffer[k] = new SoddTriggerInfo { track = s.tlTrack[slot], region = s.tlRegion[slot], clip = s.tlClip[slot], seed = s.tlSeed[slot], instanceSeed = s.instanceSeed };
+            }
+            return n;
+        }
+
         /// <summary>Multiplicador de volumen lineal extra (0..1+), útil para mezclas desde código.</summary>
         public float Volume
         {
@@ -116,5 +133,15 @@ namespace Sodd.Design
         public static bool operator ==(SoddEventInstance a, SoddEventInstance b) => a.Equals(b);
         public static bool operator !=(SoddEventInstance a, SoddEventInstance b) => !a.Equals(b);
         public override string ToString() => IsValid ? $"SoddEventInstance({Path}#{_index}.{_gen})" : "SoddEventInstance(invalid)";
+    }
+}
+
+namespace Sodd.Design
+{
+    /// <summary>One region trigger: which region played, which clip of its instrument and the seeds its random modulators used.</summary>
+    public struct SoddTriggerInfo
+    {
+        public int track, region, clip;
+        public uint seed, instanceSeed;
     }
 }

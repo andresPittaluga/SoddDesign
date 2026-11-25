@@ -46,6 +46,7 @@ En el Studio, el botón **?** (arriba a la derecha) muestra los atajos en cualqu
 |---|---|
 | Espacio | Play / Stop |
 | Esc | Stop y volver al inicio |
+| L | Repetir la preview (loop de escucha, no cambia el evento) |
 | S | Cortar la región en el playhead |
 | D o Ctrl+D | Duplicar región |
 | Supr o Backspace | Borrar lo seleccionado (región, marker o track) |
@@ -72,6 +73,15 @@ Los atajos se pueden cambiar en `Edit > Shortcuts > SoddDesign Studio`.
 - **Seleccionar**: click en la banderita. **Mover**: arrastrarla. **Renombrar**: doble click.
 - **Borrar**: seleccionarlo y Supr, o click derecho → *Borrar marker*.
 - El juego recibe cada marker como callback `OnMarker` con su nombre.
+
+### Multi-instrumentos (Random y Secuencia)
+- Una región *RandomClip* o *Sequential* muestra cada sonido apilado en su propia franja, con su waveform y su nombre (en la secuencia, numerados en orden). Con más de 6 sonidos se ven 6 y "+N más".
+- Después de cada play, la franja del sonido que tocó queda resaltada con una barra blanca.
+
+### Escuchar varias veces
+- **⟳** al lado de Play (o la tecla **L**) repite la preview: cuando el evento termina, vuelve a sonar. No cambia el evento.
+- Cada repetición sortea de nuevo los random, así escuchás la variedad.
+- Al lado de cada perilla con un modulador *Random* aparece **▶ valor**: lo que tocó en el último play (base + random).
 
 ### Perillas (como en FMOD)
 Volumen, pitch, pan y los parámetros de los efectos se editan con perillas:

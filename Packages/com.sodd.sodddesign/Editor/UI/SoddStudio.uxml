@@ -56,6 +56,7 @@
                 <ui:Button name="btn-rewind" text="⏮" class="sd-tbtn" tooltip="Volver al inicio (Inicio)" />
                 <ui:Button name="btn-play" text="▶" class="sd-tbtn sd-tbtn--play" tooltip="Play / Stop (Espacio)" />
                 <ui:Button name="btn-stop" text="■" class="sd-tbtn" tooltip="Stop y volver al inicio (Esc)" />
+                <ui:Button name="btn-loop" text="⟳" class="sd-tbtn" tooltip="Repetir la preview: cuando el evento termina, vuelve a sonar (L). No cambia el evento." />
                 <ui:Label name="time" text="0.00 s" class="sd-time" />
                 <ui:Label name="shortcuts" text="Espacio play/stop · Esc stop · Ctrl+Z / Ctrl+Y · S dividir · D duplicar · Supr borrar · F encuadrar" class="sd-help" tooltip="Se cambian en Edit &gt; Shortcuts &gt; SoddDesign Studio" />
             </ui:VisualElement>

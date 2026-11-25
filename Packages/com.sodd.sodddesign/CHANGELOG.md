@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10] - 2026-11-24
+- Regiones RandomClip/Sequential: cada sonido en su propia franja (waveform + nombre, numerados en la secuencia), como el multi-instrumento de FMOD; más de 6 muestra "+N más".
+- Preview: botón ⟳ junto a Play (tecla L) que repite la escucha sin cambiar el evento.
+- Al lado de cada perilla con modulador Random se ve el valor que tocó en el último play, y la franja del clip elegido queda resaltada. El motor guarda los últimos disparos (`SoddEventInstance.GetRecentTriggers`, `Seed`).
+- Formato canónico de los `.sodd.json` (`SoddCommands.Canonical`, `Sodd/Dev/Normalize Event Files`): guardar sin cambios reales deja el archivo idéntico; `markers`/`loopRegions` vacíos no se escriben.
+- Fix: guardar un evento ya no borra `volume`, `pitch` ni `startOffset` de cada clip de una playlist.
+
 ## [0.1.9] - 2026-11-24
 - Menú propio `Sodd` en la barra de Unity (Studio, Mixer, Profiler, herramientas, Guía de uso y Atajos); `Window/Sodd` ya no existe.
 - Tracks: arrastrar el nombre los reordena; click derecho Subir/Bajar/Duplicar; el chip de dB se arrastra para cambiar el volumen.

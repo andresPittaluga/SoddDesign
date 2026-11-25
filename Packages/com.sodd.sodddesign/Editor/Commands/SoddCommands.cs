@@ -61,12 +61,55 @@ namespace Sodd.Design.Editor
         static SoddResult Commit(JsonNode dom, string currentFile, string newFile, string undoName, SoddResult r)
         {
             NormalizeClips(dom, r);
+            DropEmptyOptionalArrays(dom);
             r.Merge(ValidateDom(dom));
             if (!r.ok) return r;
             string key = dom["id"]?.AsString() ?? newFile;
             SoddUndo.Change(key, currentFile, newFile, SoddJson.Write(dom), undoName);
             Changed?.Invoke(key);
             return r;
+        }
+
+        static readonly string[] OptionalArrays = { "markers", "loopRegions" };
+
+        /// <summary>Arrays opcionales vacíos no se escriben: el reader los toma como vacíos y así agregar y borrar no deja rastro.</summary>
+        static void DropEmptyOptionalArrays(JsonNode dom)
+        {
+            foreach (var key in OptionalArrays)
+            {
+                var a = dom[key];
+                if (a != null && a.IsArray && a.Count == 0) dom.Remove(key);
+            }
+        }
+
+        /// <summary>Texto canónico de un evento: el mismo que escribe el Studio al guardar. Null si el JSON no es válido.</summary>
+        public static string Canonical(string json)
+        {
+            if (!SoddJson.TryParse(json, out var dom, out _)) return null;
+            NormalizeClips(dom, new SoddResult());
+            DropEmptyOptionalArrays(dom);
+            return SoddJson.Write(dom);
+        }
+
+        /// <summary>Reescribe en formato canónico los eventos que no lo están. Devuelve cuántos archivos cambió.</summary>
+        public static int NormalizeAllEventFiles()
+        {
+            int changed = 0;
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                foreach (var file in SoddProjectFiles.AllEventFiles())
+                {
+                    string text = File.ReadAllText(file);
+                    string canon = Canonical(text);
+                    if (canon == null || canon == text.Replace("\r\n", "\n")) continue;
+                    File.WriteAllText(file, canon);
+                    AssetDatabase.ImportAsset(file, ImportAssetOptions.ForceUpdate);
+                    changed++;
+                }
+            }
+            finally { AssetDatabase.StopAssetEditing(); }
+            return changed;
         }
 
         /// <summary>Clips: acepta "path" string o {guid|path}; completa guid y path para que IA y Unity se entiendan.</summary>
@@ -94,9 +137,8 @@ namespace Sodd.Design.Editor
         static JsonNode NormalizeClip(JsonNode n, string where, SoddResult r)
         {
             string guid = null, path = null;
-            JsonNode weight = null;
             if (n.IsString) path = n.String;
-            else if (n.IsObject) { guid = n["guid"]?.AsString(); path = n["path"]?.AsString(); weight = n["weight"]; }
+            else if (n.IsObject) { guid = n["guid"]?.AsString(); path = n["path"]?.AsString(); }
             else return n;
             if (!string.IsNullOrEmpty(guid))
             {
@@ -114,7 +156,9 @@ namespace Sodd.Design.Editor
             var o = JsonNode.NewObject();
             o.Set("guid", AssetDatabase.AssetPathToGUID(path));
             o.Set("path", path);
-            if (weight != null) o.Set("weight", weight);
+            if (n.IsObject)
+                foreach (var kv in n.Props)
+                    if (kv.Key != "guid" && kv.Key != "path") o.Set(kv.Key, kv.Value);
             return o;
         }
 

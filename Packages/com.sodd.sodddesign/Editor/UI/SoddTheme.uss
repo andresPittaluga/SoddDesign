@@ -169,3 +169,8 @@
 .sd-help-row { flex-direction: row; padding: 3px 0; border-bottom-width: 1px; border-color: var(--sd-line); }
 .sd-help-keys { width: 170px; flex-shrink: 0; -unity-font-style: bold; color: #e6e9ef; white-space: normal; }
 .sd-help-action { flex-grow: 1; flex-shrink: 1; color: var(--sd-dim); white-space: normal; }
+
+.sd-strip-label { position: absolute; font-size: 8px; color: #0d0f13; -unity-text-align: middle-left; overflow: hidden; white-space: nowrap; opacity: 0.8; }
+
+.sd-tbtn--on { background-color: var(--sd-accent); color: var(--sd-accent-dark); }
+.sd-rnd-readout { font-size: 10px; color: var(--sd-accent); margin-left: 4px; min-width: 54px; -unity-text-align: middle-right; }

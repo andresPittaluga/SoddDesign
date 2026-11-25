@@ -45,6 +45,24 @@ namespace Sodd.Design.Tests
         }
 
         [Test]
+        public void RecentTriggersReportRegionsAndSeedsNewestFirst()
+        {
+            var e = Headless();
+            var a = MakeAsset(Event("trig", "", Track(Region(0, 0.3f) + "," + Region(0.2f, 0.3f))));
+            var inst = e.CreateInstance(a);
+            inst.Start();
+            Run(e, 0, 0.4);
+            var buf = new SoddTriggerInfo[16];
+            int n = inst.GetRecentTriggers(buf);
+            Assert.AreEqual(2, n);
+            Assert.AreEqual(1, buf[0].region, "el más nuevo primero");
+            Assert.AreEqual(0, buf[1].region);
+            Assert.AreNotEqual(buf[0].seed, buf[1].seed, "cada disparo tiene su semilla");
+            Assert.AreEqual(inst.Seed, buf[0].instanceSeed);
+            inst.Release();
+        }
+
+        [Test]
         public void EventStopsWhenTimelineEnds()
         {
             var e = Headless();

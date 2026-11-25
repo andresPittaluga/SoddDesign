@@ -60,6 +60,11 @@ namespace Sodd.Design
         public float stopDuration;
         public uint instanceSeed;
         public uint triggerCounter;
+        /// <summary>Last triggers (ring buffer): track, region, position of the clip in the instrument and seed, so tools can show what a random modulator picked.</summary>
+        public const int MaxTriggerLog = 16;
+        public readonly int[] tlTrack = new int[MaxTriggerLog], tlRegion = new int[MaxTriggerLog], tlClip = new int[MaxTriggerLog];
+        public readonly uint[] tlSeed = new uint[MaxTriggerLog];
+        public int tlCount;
         public float audibility;
         public float startTime;
         public bool paused, userPaused;
@@ -79,7 +84,7 @@ namespace Sodd.Design
             released = false; state = SoddInstanceState.Created; asset = null; ev = null;
             attach = null; hasAttach = false; position = Vector3.zero;
             voiceCount = 0; mkCount = 0; segCount = 0; childCount = 0;
-            stopElapsed = -1f; elapsed = 0f; triggerCounter = 0; virtualVoices = 0; volumeScale = 1f; pitchScale = 1f;
+            stopElapsed = -1f; elapsed = 0f; triggerCounter = 0; virtualVoices = 0; tlCount = 0; volumeScale = 1f; pitchScale = 1f;
             paused = userPaused = false;
             seq = null;
             onMarker = null; onStopped = null; onLoopExit = null;
@@ -528,6 +533,8 @@ namespace Sodd.Design
                     }
             }
             int clipIdx = PickClip(s, ti, ri, seed, out var clipRef);
+            int slot = s.tlCount++ % SoddInstance.MaxTriggerLog;
+            s.tlTrack[slot] = ti; s.tlRegion[slot] = ri; s.tlSeed[slot] = seed; s.tlClip[slot] = Array.IndexOf(ins.clips, clipRef);
             if (clipIdx < 0) return;
             AudioClip clip = clipIdx < s.asset.clips.Length ? s.asset.clips[clipIdx] : null;
             if (clip == null && !Headless) return;

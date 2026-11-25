@@ -123,6 +123,25 @@ namespace Sodd.Design.Editor
             return r;
         }
 
+        internal sealed class RandomReadout
+        {
+            public Label label;
+            public string ptr, unit;
+            public SoddModProp prop;
+            public SoddPropKind kind;
+        }
+
+        /// <summary>Etiquetas "valor que tocó" del inspector actual; el Studio las actualiza en vivo.</summary>
+        internal static readonly List<RandomReadout> RandomReadouts = new List<RandomReadout>();
+
+        static bool HasRandom(SoddModProp p)
+        {
+            if (!p.HasModulators) return false;
+            foreach (var m in p.modulators)
+                if (m.type == SoddModulatorType.Random || m.type == SoddModulatorType.RandomScaledByParameter) return true;
+            return false;
+        }
+
         // ------------------------------------------------------------------ props modulables
         VisualElement ModProp(string label, string ptr, SoddModProp prop, string unit, string tooltip, string paramForX = null, SoddEffectCatalog.ParamInfo range = null)
         {
@@ -144,6 +163,13 @@ namespace Sodd.Design.Editor
                 var f = new FloatField($"{label} ({unit})") { value = prop.@base, isDelayed = true, tooltip = tip };
                 f.RegisterValueChangedCallback(e => Set(ptr, J(e.newValue)));
                 row.Add(f);
+            }
+            if (HasRandom(prop))
+            {
+                var readout = new Label("—") { tooltip = "Valor que tocó en el último play (base + random). Cambia en cada play." };
+                readout.AddToClassList("sd-rnd-readout");
+                row.Add(readout);
+                RandomReadouts.Add(new RandomReadout { label = readout, ptr = ptr, prop = prop, kind = unit == "dB" ? SoddPropKind.GainDb : unit == "st" ? SoddPropKind.Semitones : SoddPropKind.Generic, unit = unit });
             }
             bool open = s_openMods.Contains(_evt + ptr);
             var mb = new Button { text = prop.HasModulators ? "∿" + prop.modulators.Length : "＋", tooltip = prop.HasModulators ? "Ver/editar moduladores" : "Agregar modulador (Random, curva por parámetro, LFO, ADSR...)" };

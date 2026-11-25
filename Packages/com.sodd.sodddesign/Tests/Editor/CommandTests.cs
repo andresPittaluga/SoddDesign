@@ -159,6 +159,38 @@ namespace Sodd.Design.Tests
         }
 
         [Test]
+        public void SavingWithoutRealChangesLeavesTheFileIdentical()
+        {
+            Assert.IsTrue(SoddCommands.CreateEventFromJson("{\"path\":\"" + P + "\",\"tags\":[\"ui\"],\"volume\":-2.0,\"markers\":[],\"tracks\":[{\"name\":\"A\",\"regions\":[{\"start\":0.0,\"length\":1.0,\"instrument\":{\"type\":\"SingleClip\",\"clip\":\"Assets/Sandbox/Audio/kick.wav\"}}]}]}").ok);
+            string file = SoddCommands.LocateFile(P);
+            string canon = SoddCommands.Canonical(File.ReadAllText(file));
+            Assert.AreEqual(canon, SoddCommands.Canonical(canon), "el formato canónico es idempotente");
+            StringAssert.DoesNotContain("\"markers\"", canon, "un array de markers vacío no se escribe");
+            File.WriteAllText(file, canon);
+
+            Assert.IsTrue(SoddCommands.AddTrack(P, "B").ok);
+            Assert.IsTrue(SoddCommands.RemoveTrack(P, 1).ok);
+            Assert.AreEqual(canon, File.ReadAllText(file), "agregar y borrar un track no deja rastro");
+
+            Assert.IsTrue(SoddCommands.AddMarker(P, "Hit", 0.5f).ok);
+            Assert.IsTrue(SoddCommands.RemoveMarker(P, 0).ok);
+            Assert.AreEqual(canon, File.ReadAllText(file), "agregar y borrar un marker no deja rastro");
+        }
+
+        [Test]
+        public void SavingKeepsPerClipVolumePitchAndOffset()
+        {
+            Assert.IsTrue(SoddCommands.CreateEventFromJson("{\"path\":\"" + P + "\",\"tracks\":[{\"name\":\"A\",\"regions\":[{\"start\":0,\"length\":1,\"instrument\":{\"type\":\"RandomClip\",\"clips\":[{\"path\":\"Assets/Sandbox/Audio/kick.wav\",\"volume\":-3.5,\"pitch\":2,\"startOffset\":0.08,\"weight\":2},\"Assets/Sandbox/Audio/snare.wav\"]}}]}]}").ok);
+            Assert.IsTrue(SoddCommands.SetProperty(P, "/description", "\"guardado\"").ok);
+            var c = SoddJson.Resolve(Dom(P), "/tracks/0/regions/0/instrument/clips/0");
+            Assert.AreEqual(-3.5, c["volume"].Number, 1e-6);
+            Assert.AreEqual(2, c["pitch"].Number, 1e-6);
+            Assert.AreEqual(0.08, c["startOffset"].Number, 1e-6);
+            Assert.AreEqual(2, c["weight"].Number, 1e-6);
+            Assert.IsFalse(string.IsNullOrEmpty(c["guid"].String));
+        }
+
+        [Test]
         public void LocalParameterAndCreateFromJson()
         {
             var r = SoddCommands.CreateEventFromJson("{\"path\":\"" + P + "\",\"description\":\"motor\",\"tracks\":[]}");

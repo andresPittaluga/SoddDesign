@@ -184,6 +184,9 @@ namespace Sodd.Design.Editor
             // transporte
             _play = _root.Q<Button>("btn-play");
             _play.clicked += TogglePlay;
+            _loopBtn = _root.Q<Button>("btn-loop");
+            _loopBtn.clicked += ToggleLoopPreview;
+            _loopBtn.EnableInClassList("sd-tbtn--on", _loopPreview);
             _root.Q<Button>("btn-stop").clicked += () => StopPreview(true);
             _root.Q<Button>("btn-rewind").clicked += Rewind;
 
@@ -245,6 +248,7 @@ namespace Sodd.Design.Editor
                 if (sel == null) _selectedId = null;
             }
             if (_s.Asset != sel && _inst.IsValid) StopPreview(true);
+            if (_s.Asset != sel) { _triggers.Clear(); _lastTrigger = null; _s.LastPickedClip.Clear(); }
             _s.Asset = sel; _s.EventId = _selectedId;
             if (sel != null)
             {
@@ -631,6 +635,8 @@ namespace Sodd.Design.Editor
         {
             if (_inspector == null) return;
             _inspector.Clear();
+            SoddInspector.RandomReadouts.Clear();
+            _inspector.schedule.Execute(UpdateRandomReadouts);
             var a = _s.Asset;
             if (a == null)
             {
@@ -701,7 +707,20 @@ namespace Sodd.Design.Editor
         void TogglePlay()
         {
             if (_inst.IsPlaying) { StopPreview(false); return; }
+            StartPreview();
+        }
+
+        void ToggleLoopPreview()
+        {
+            _loopPreview = !_loopPreview;
+            _loopBtn?.EnableInClassList("sd-tbtn--on", _loopPreview);
+        }
+
+        void StartPreview()
+        {
             if (!HasEvent) return;
+            _userStopped = false;
+            _triggers.Clear();
             if (_inst.IsValid) _inst.Release();
             _inst = SoddPreview.CreateInstance(_s.Asset);
             if (!_inst.IsValid) return;
@@ -715,12 +734,82 @@ namespace Sodd.Design.Editor
 
         void StopPreview(bool immediate)
         {
+            _userStopped = true;
             if (_inst.IsValid) _inst.Stop(immediate ? SoddStopMode.Immediate : SoddStopMode.AllowFadeOut);
             if (immediate) { _inst.Release(); _inst = default; }
         }
 
+        // ---- lo que tocó cada región en el último play (para ver los random)
+        [SerializeField] bool _loopPreview;
+        Button _loopBtn;
+        bool _userStopped;
+        readonly SoddTriggerInfo[] _trigBuf = new SoddTriggerInfo[SoddInstanceLogSize];
+        const int SoddInstanceLogSize = 16;
+        /// <summary>Último disparo por región (clave track*4096+region) del play actual o del último.</summary>
+        readonly Dictionary<int, SoddTriggerInfo> _triggers = new Dictionary<int, SoddTriggerInfo>();
+        SoddTriggerInfo? _lastTrigger;
+
+        void CaptureTriggers()
+        {
+            if (!_inst.IsValid) return;
+            int n = _inst.GetRecentTriggers(_trigBuf);
+            bool changed = false;
+            for (int k = n - 1; k >= 0; k--)
+            {
+                var t = _trigBuf[k];
+                int key = t.track * 4096 + t.region;
+                if (_triggers.TryGetValue(key, out var old) && old.seed == t.seed) continue;
+                _triggers[key] = t; _lastTrigger = t; changed = true;
+            }
+            if (!changed) return;
+            _s.LastPickedClip.Clear();
+            foreach (var kv in _triggers) _s.LastPickedClip[kv.Key] = kv.Value.clip;
+            _canvas.RepaintAll();
+            UpdateRandomReadouts();
+        }
+
+        /// <summary>Muestra al lado de cada perilla con random el valor que tocó en el último play.</summary>
+        void UpdateRandomReadouts()
+        {
+            var a = _s.Asset;
+            if (a == null) return;
+            var engine = SoddPreview.Engine;
+            var local = new float[16];
+            var ps = a.data.parameters;
+            for (int k = 0; k < ps.Length && k < local.Length; k++)
+                local[k] = _localParamCache.TryGetValue(ps[k].name, out var v) ? v : ps[k].defaultValue;
+            foreach (var r in SoddInspector.RandomReadouts)
+            {
+                if (!TriggerFor(r.ptr, out var t)) { r.label.text = "—"; continue; }
+                var ctx = new SoddModContext { local = local, global = engine?.Parameters.Values, time = 0f, stopTime = -1f, triggerSeed = t.seed, instanceSeed = t.instanceSeed };
+                float val = SoddModulation.Evaluate(r.prop, r.kind, ref ctx);
+                string s = val.ToString(Mathf.Abs(val) >= 100 ? "0" : "0.0#");
+                if ((r.unit == "dB" || r.unit == "st") && val > 0) s = "+" + s;
+                r.label.text = "▶ " + s + (r.unit == "dB" || r.unit == "st" ? " " + r.unit : "");
+            }
+        }
+
+        /// <summary>El disparo que corresponde a una propiedad: el de su región, el más reciente de su track o el último del evento.</summary>
+        bool TriggerFor(string ptr, out SoddTriggerInfo t)
+        {
+            t = default;
+            var parts = ptr.Split('/');
+            if (parts.Length > 4 && parts[1] == "tracks" && parts[3] == "regions" && int.TryParse(parts[2], out int tr) && int.TryParse(parts[4], out int rg))
+                return _triggers.TryGetValue(tr * 4096 + rg, out t);
+            if (parts.Length > 2 && parts[1] == "tracks" && int.TryParse(parts[2], out int tk))
+            {
+                if (_lastTrigger.HasValue && _lastTrigger.Value.track == tk) { t = _lastTrigger.Value; return true; }
+                foreach (var kv in _triggers) if (kv.Value.track == tk) { t = kv.Value; return true; }
+                return false;
+            }
+            if (_s.SelTrack >= 0 && _s.SelRegion >= 0 && _triggers.TryGetValue(_s.SelTrack * 4096 + _s.SelRegion, out t)) return true;
+            if (_lastTrigger.HasValue) { t = _lastTrigger.Value; return true; }
+            return false;
+        }
+
         void Live()
         {
+            CaptureTriggers();
             bool playing = _inst.IsPlaying;
             if (_play != null) _play.text = playing ? "■" : "▶";
             if (playing)
@@ -732,7 +821,12 @@ namespace Sodd.Design.Editor
                 _canvas.RepaintPlayhead(); _ruler.MarkDirtyRepaint();
                 _time.text = _s.Playhead.ToString("0.00") + " s";
             }
-            else if (_s.Playing) { _s.Playing = false; if (_inst.IsValid && !_inst.IsPlaying) { _inst.Release(); _inst = default; } }
+            else if (_s.Playing)
+            {
+                _s.Playing = false;
+                if (_inst.IsValid && !_inst.IsPlaying) { _inst.Release(); _inst = default; }
+                if (_loopPreview && !_userStopped && HasEvent) StartPreview();
+            }
             // medidor (master)
             var e = SoddPreview.IsRunning || Application.isPlaying ? SoddPreview.Engine : null;
             float m = e?.Buses.Master?.Meter ?? 0f;
@@ -780,6 +874,9 @@ namespace Sodd.Design.Editor
 
         [Shortcut(Sc + "Stop y volver al inicio", typeof(SoddStudioWindow), KeyCode.Escape)]
         static void ScStop(ShortcutArguments a) => Run(a, w => { w.StopPreview(true); w.Rewind(); });
+
+        [Shortcut(Sc + "Loop de la preview", typeof(SoddStudioWindow), KeyCode.L)]
+        static void ScLoop(ShortcutArguments a) => Run(a, w => w.ToggleLoopPreview(), false);
 
         [Shortcut(Sc + "Volver al inicio", typeof(SoddStudioWindow), KeyCode.Home)]
         static void ScHome(ShortcutArguments a) => Run(a, w => w.Rewind());
