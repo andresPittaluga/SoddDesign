@@ -34,6 +34,10 @@
     panel ▶FMOD/▶Sodd/veredicto → `WarpMart/SoundTest_RESULTADOS.md`). Leer ese archivo para corregir eventos.
   - Guía (Claude Docs): https://claude.ai/artifact/Ee8MtR8Rw3kToLiT7JJqsZ
   - Próximo: feedback de oído del humano → ajustes en eventos; con su OK, ejecutar el checklist "Quitar FMOD".
+- [x] Jamsters (jam con amigos): `C:/Users/andys/Documents/Jamsters` → github.com/andresPittaluga/Jamsters.
+  Paquete por git URL `#v0.1.12` en main (commit 9da642a, pusheado). Sin audio previo que migrar.
+  Pendiente: cuando el humano pase los usuarios de GitHub, invitarlos como colaboradores (write) a SoddDesign
+  (privado: sin acceso, Unity no puede bajar el paquete) y, si hace falta, a Jamsters. `gh` no tiene login: `gh auth login`.
 
 ## Decisiones
 - Paquete embebido en `Packages/com.sodd.sodddesign` + `"testables"` en el manifest para correr sus tests.
